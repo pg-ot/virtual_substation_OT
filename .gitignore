@@ -1,0 +1,29 @@
+# Build artifacts
+*.o
+*.a
+*.so
+build/
+libiec61850/build/
+
+# Temporary files
+/tmp/gui_data.txt
+/tmp/goose_data.txt
+/tmp/gui_publisher*
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+
+# Compiled executables
+goose_publisher_example
+goose_subscriber_example

@@ -1,0 +1,14 @@
+# System Requirements for Virtual Substation
+# Install with: sudo apt install -y <package>
+
+build-essential
+gcc
+make
+python3
+python3-tk
+git
+
+# Optional for development
+gdb
+wireshark
+tcpdump
