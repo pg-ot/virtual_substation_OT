@@ -1,61 +1,183 @@
 #!/bin/bash
 
-if [ "$1" = "" ]; then
+set -euo pipefail
+
+if [ "${1:-}" = "" ]; then
     echo "Usage: $0 <interface>"
     echo "Available interfaces:"
-    ip link show | grep -E "^[0-9]+:" | awk '{print "  " $2}' | sed 's/://'
+    if command -v ip >/dev/null 2>&1; then
+        ip link show | grep -E "^[0-9]+:" | awk '{print "  " $2}' | sed 's/://'
+    else
+        echo "  (ip command not found; cannot list interfaces)"
+    fi
     exit 1
 fi
 
 INTERFACE=$1
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SUBSCRIBER_DIR="$SCRIPT_DIR/libiec61850/examples/goose_subscriber"
+GOOSE_FILE="/tmp/goose_data.txt"
+PERMISSION_GUARD_PID=""
+GUI_PID=""
+
+# Pass through important env to sudo sessions (for libs/datasets)
+SUDO_ENV_VARS=()
+if [ -n "${LD_LIBRARY_PATH:-}" ]; then
+    SUDO_ENV_VARS+=("LD_LIBRARY_PATH=$LD_LIBRARY_PATH")
+fi
+if [ -n "${LIBIEC61850_HOME:-}" ]; then
+    SUDO_ENV_VARS+=("LIBIEC61850_HOME=$LIBIEC61850_HOME")
+fi
+if [ -n "${IEC61850_DATA_DIR:-}" ]; then
+    SUDO_ENV_VARS+=("IEC61850_DATA_DIR=$IEC61850_DATA_DIR")
+fi
+
+# Effective/Caller UID & GID so the root-run subscriber can hand off file ownership
+EFFECTIVE_UID=$(id -u)
+if [ -n "${SUDO_UID:-}" ]; then
+    CALLER_UID=$SUDO_UID
+    if [ -n "${SUDO_GID:-}" ]; then
+        CALLER_GID=$SUDO_GID
+    else
+        CALLER_GID=$(id -g)
+    fi
+else
+    CALLER_UID=$EFFECTIVE_UID
+    CALLER_GID=$(id -g)
+fi
+
+# Determine privilege helper
+if [ "$EFFECTIVE_UID" -eq 0 ]; then
+    SUDO=""
+elif command -v sudo >/dev/null 2>&1; then
+    SUDO="sudo"
+else
+    echo "This script requires root privileges. Run as root or install sudo." >&2
+    exit 1
+fi
+
+run_with_privileges() {
+    if [ -n "$SUDO" ]; then
+        "$SUDO" "$@"
+    else
+        "$@"
+    fi
+}
+
+start_privileged_background() {
+    local dir="$1"
+    shift
+    if [ -n "$SUDO" ]; then
+        (cd "$dir" && "$SUDO" env \
+            "${SUDO_ENV_VARS[@]}" \
+            "GOOSE_FILE_OWNER_UID=$CALLER_UID" \
+            "GOOSE_FILE_OWNER_GID=$CALLER_GID" \
+            bash -c 'umask 022; exec "$@"' bash "$@") &
+    else
+        (cd "$dir" && env \
+            "${SUDO_ENV_VARS[@]}" \
+            "GOOSE_FILE_OWNER_UID=$CALLER_UID" \
+            "GOOSE_FILE_OWNER_GID=$CALLER_GID" \
+            bash -c 'umask 022; exec "$@"' bash "$@") &
+    fi
+    echo $!
+}
+
+start_permission_guard() {
+    local uid="$CALLER_UID" gid="$CALLER_GID"
+    (
+        while true; do
+            # Exit if subscriber died
+            if [ -n "${SUBSCRIBER_PID:-}" ] && ! kill -0 "$SUBSCRIBER_PID" 2>/dev/null; then
+                break
+            fi
+            if [ -e "$GOOSE_FILE" ]; then
+                run_with_privileges chown "$uid:$gid" "$GOOSE_FILE" 2>/dev/null || true
+                run_with_privileges chmod 664 "$GOOSE_FILE" 2>/dev/null || true
+            fi
+            sleep 1
+        done
+    ) &
+    PERMISSION_GUARD_PID=$!
+}
+
+CLEANED_UP=0
+cleanup() {
+    if [ "$CLEANED_UP" -eq 1 ]; then
+        return
+    fi
+    CLEANED_UP=1
+
+    printf '\nStopping Breaker IED...\n'
+
+    if [ -n "${SUBSCRIBER_PID:-}" ] && kill -0 "$SUBSCRIBER_PID" 2>/dev/null; then
+        run_with_privileges kill "$SUBSCRIBER_PID" 2>/dev/null || true
+    fi
+
+    if [ -n "${PERMISSION_GUARD_PID:-}" ] && kill -0 "$PERMISSION_GUARD_PID" 2>/dev/null; then
+        kill "$PERMISSION_GUARD_PID" 2>/dev/null || true
+        wait "$PERMISSION_GUARD_PID" 2>/dev/null || true
+    fi
+
+    if [ -n "${GUI_PID:-}" ]; then
+        if run_with_privileges kill -0 "$GUI_PID" 2>/dev/null; then
+            run_with_privileges kill "$GUI_PID" 2>/dev/null || true
+        fi
+    fi
+
+    run_with_privileges pkill -f goose_subscriber_example 2>/dev/null || true
+    run_with_privileges pkill -f "$SCRIPT_DIR/breaker_gui.py" 2>/dev/null || true
+    run_with_privileges rm -f "$GOOSE_FILE" 2>/dev/null || true
+}
+
+trap cleanup SIGINT SIGTERM EXIT
 
 echo "Starting Breaker IED (Subscriber) on interface: $INTERFACE"
 echo "This will launch both the GOOSE subscriber and GUI display panel"
 echo ""
 
 # Clean up any existing processes and files
-echo "password" | sudo -S pkill -f goose_subscriber_example 2>/dev/null || true
-pkill -f breaker_gui.py 2>/dev/null || true
-echo "password" | sudo -S rm -f /tmp/goose_data.txt 2>/dev/null || true
+run_with_privileges pkill -f goose_subscriber_example 2>/dev/null || true
+run_with_privileges pkill -f "$SCRIPT_DIR/breaker_gui.py" 2>/dev/null || true
+run_with_privileges rm -f "$GOOSE_FILE" 2>/dev/null || true
 
-# Initialize GOOSE data file
-echo "0,0,0,50,0.0,0,49.8" > /tmp/goose_data.txt
+# Initialize GOOSE data file with safe permissions
+ORIG_UMASK=$(umask)
+umask 022
+echo "0,0,0,50,0.0,0,49.8" > "$GOOSE_FILE"
+umask "$ORIG_UMASK"
+run_with_privileges chown "$CALLER_UID:$CALLER_GID" "$GOOSE_FILE" 2>/dev/null || true
+run_with_privileges chmod 664 "$GOOSE_FILE" 2>/dev/null || true
 
-# Start the GUI first
-cd "/home/lab/virtual substation"
-python3 breaker_gui.py $INTERFACE &
+# Start the GUI
+echo "Starting Breaker GUI..."
+if command -v python3 >/dev/null 2>&1; then
+    if [ -n "$SUDO" ]; then
+        # keep env for display if needed
+        "$SUDO" -E python3 "$SCRIPT_DIR/breaker_gui.py" "$INTERFACE" &
+    else
+        python3 "$SCRIPT_DIR/breaker_gui.py" "$INTERFACE" &
+    fi
+else
+    echo "python3 not found. Please install Python 3.x." >&2
+    exit 1
+fi
 GUI_PID=$!
 
 # Give GUI time to start
 sleep 1
 
-# Start the GOOSE subscriber example
-cd libiec61850/examples/goose_subscriber
+# Start the GOOSE subscriber (privileged) with env telling it who should own the data file
 echo "Starting GOOSE Subscriber..."
 echo "GUI will display received protection data"
 echo "Press Ctrl+C to stop both GUI and subscriber"
+SUBSCRIBER_PID=$(start_privileged_background "$SUBSCRIBER_DIR" ./goose_subscriber_example "$INTERFACE")
 
-sudo ./goose_subscriber_example $INTERFACE &
-SUBSCRIBER_PID=$!
+# Start file permission guard
+start_permission_guard
 
-# Function to cleanup
-cleanup() {
-    echo "\nStopping Breaker IED..."
-    sudo kill $SUBSCRIBER_PID 2>/dev/null
-    kill $GUI_PID 2>/dev/null
-    sudo pkill -f goose_subscriber_example 2>/dev/null
-    pkill -f breaker_gui.py 2>/dev/null
-    sudo rm -f /tmp/goose_data.txt
-    exit 0
-}
-
-trap cleanup SIGINT SIGTERM EXIT
-
-# Wait for either process to finish
-wait $SUBSCRIBER_PID
-
-# Clean up
-kill $GUI_PID 2>/dev/null
-rm -f /tmp/goose_data.txt
+# Wait for subscriber to finish; cleanup handled by trap
+wait "$SUBSCRIBER_PID" || true
+cleanup
 
 echo "Breaker IED stopped"

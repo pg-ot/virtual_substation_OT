@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 import tkinter as tk
-from tkinter import ttk
-import subprocess
 import threading
 import time
 import os
 import signal
 import sys
+from queue import Queue, Empty
 
 class BreakerIED:
     def __init__(self, interface="enp0s3"):
@@ -27,8 +26,13 @@ class BreakerIED:
         self.last_update = tk.StringVar(value="Never")
         
         self.subscriber_process = None
+        self.data_queue = Queue()
+        self._last_payload = None
+        self._permission_warning = False
+
         self.setup_gui()
         self.start_subscriber()  # Auto-start
+        self.root.after(100, self.process_queue)
         
     def setup_gui(self):
         # Title
@@ -50,14 +54,14 @@ class BreakerIED:
         trip_frame.pack(fill="x", pady=2)
         tk.Label(trip_frame, text="Trip Command:", width=15, anchor="w").pack(side="left")
         self.trip_label = tk.Label(trip_frame, textvariable=self.trip_status, 
-                                  font=("Arial", 12, "bold"), width=10)
+                                   font=("Arial", 12, "bold"), width=10)
         self.trip_label.pack(side="left")
         
         close_frame = tk.Frame(cmd_frame)
         close_frame.pack(fill="x", pady=2)
         tk.Label(close_frame, text="Close Command:", width=15, anchor="w").pack(side="left")
         self.close_label = tk.Label(close_frame, textvariable=self.close_status,
-                                   font=("Arial", 12, "bold"), width=10)
+                                    font=("Arial", 12, "bold"), width=10)
         self.close_label.pack(side="left")
         
         # Breaker Status Frame
@@ -69,7 +73,7 @@ class BreakerIED:
         
         tk.Label(breaker_frame, text="Breaker Position:", font=("Arial", 12)).pack()
         self.breaker_status_label = tk.Label(breaker_frame, textvariable=self.breaker_status,
-                                           font=("Arial", 14, "bold"))
+                                             font=("Arial", 14, "bold"))
         self.breaker_status_label.pack()
         
         # Fault Info Frame
@@ -103,7 +107,7 @@ class BreakerIED:
         
         # Status
         tk.Label(self.root, text="Monitoring GOOSE Messages", 
-                font=("Arial", 12, "bold"), fg="blue").pack(pady=10)
+                 font=("Arial", 12, "bold"), fg="blue").pack(pady=10)
         
         self.update_display()
         self.draw_breaker()
@@ -150,34 +154,73 @@ class BreakerIED:
         # Monitor the shared file for GOOSE data
         while True:
             try:
-                # Read data from shared file written by subscriber
                 with open('/tmp/goose_data.txt', 'r') as f:
-                    data = f.read().strip().split(',')
-                    if len(data) >= 7:
-                        self.trip_status.set("ACTIVE" if data[0] == "1" else "INACTIVE")
-                        self.close_status.set("ACTIVE" if data[1] == "1" else "INACTIVE")
-                        fault_types = {"0": "No Fault", "1": "Overcurrent", "2": "Differential", "3": "Distance"}
-                        self.fault_type.set(fault_types.get(data[2], "Unknown"))
-                        self.prot_element.set(data[3])
-                        self.current.set(f"{data[4]} A")
-                        self.voltage.set(f"{data[5]} V")
-                        self.frequency.set(f"{float(data[6]):.1f} Hz")
-                        
-                        # Update breaker status based on commands
-                        if data[0] == "1":  # Trip command
-                            self.breaker_status.set("OPEN")
-                        elif data[1] == "1":  # Close command
-                            self.breaker_status.set("CLOSED")
-                            
-                        self.last_update.set(time.strftime("%H:%M:%S"))
-            except:
+                    payload = f.read().strip()
+
+                if self._permission_warning:
+                    # File became readable again – notify once.
+                    print("[breaker_gui] Successfully regained access to /tmp/goose_data.txt", file=sys.stderr)
+                    self._permission_warning = False
+
+                if not payload:
+                    continue
+
+                if payload == self._last_payload:
+                    continue
+
+                data = payload.split(',')
+                if len(data) >= 7:
+                    self._last_payload = payload
+                    self.data_queue.put(data[:7])
+
+            except FileNotFoundError:
+                pass
+            except PermissionError:
+                if not self._permission_warning:
+                    print(
+                        "[breaker_gui] Permission denied reading /tmp/goose_data.txt; "
+                        "waiting for the subscriber to relax ownership...",
+                        file=sys.stderr,
+                    )
+                    self._permission_warning = True
+            except Exception:
+                # Ignore transient parsing errors but continue polling
                 pass
             time.sleep(0.1)
-            
+
+    def process_queue(self):
+        try:
+            while True:
+                data = self.data_queue.get_nowait()
+                self.trip_status.set("ACTIVE" if data[0] == "1" else "INACTIVE")
+                self.close_status.set("ACTIVE" if data[1] == "1" else "INACTIVE")
+                fault_types = {"0": "No Fault", "1": "Overcurrent", "2": "Differential", "3": "Distance"}
+                self.fault_type.set(fault_types.get(data[2], "Unknown"))
+                self.prot_element.set(data[3])
+                self.current.set(f"{data[4]} A")
+                self.voltage.set(f"{data[5]} V")
+
+                try:
+                    frequency = float(data[6])
+                except (TypeError, ValueError):
+                    frequency = 0.0
+                self.frequency.set(f"{frequency:.1f} Hz")
+
+                if data[0] == "1":
+                    self.breaker_status.set("OPEN")
+                elif data[1] == "1":
+                    self.breaker_status.set("CLOSED")
+
+                self.last_update.set(time.strftime("%H:%M:%S"))
+        except Empty:
+            pass
+
+        self.root.after(100, self.process_queue)
+
     def cleanup(self, signum=None, frame=None):
         try:
             os.remove('/tmp/goose_data.txt')
-        except:
+        except OSError:
             pass
         self.root.quit()
         sys.exit(0)
@@ -192,7 +235,6 @@ class BreakerIED:
             self.cleanup()
 
 if __name__ == "__main__":
-    import sys
     interface = sys.argv[1] if len(sys.argv) > 1 else "enp0s3"
     app = BreakerIED(interface)
     app.run()

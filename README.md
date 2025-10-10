@@ -4,6 +4,7 @@
 [![Platform](https://img.shields.io/badge/Platform-Linux-blue.svg)](https://www.linux.org/)
 [![IEC 61850](https://img.shields.io/badge/Standard-IEC%2061850-green.svg)](https://en.wikipedia.org/wiki/IEC_61850)
 
+A complete virtual substation implementation demonstrating IEC 61850 GOOSE (Generic Object Oriented Substation Event) communication between Protection IED and Breaker IED using libiec61850 library.
 A complete virtual substation implementation demonstrating IEC 61850 GOOSE (Generic Object Oriented Substation Event) communication between Protection IED and Breaker IED using libiec61850 library. The environment is intentionally self-contained so that control engineers and OT security teams can explore how GOOSE behaves, how permissions impact data sharing, and how adversarial conditions might disrupt coordination without touching production infrastructure.
 
 > ⚠️ **Disclaimer**
@@ -32,6 +33,7 @@ sudo ./start_breaker.sh eth0
 This project simulates a simplified substation protection system where:
 - **Protection IED** detects faults and sends trip/close commands via GOOSE messages
 - **Breaker IED** receives commands and operates the circuit breaker accordingly
+- Communication follows IEC 61850-8-1 standard with proper timing sequences
 - Communication mimics IEC 61850-8-1 messaging for demonstration purposes only, but the setup is also suited to OT security exercises such as practicing traffic capture/analysis, evaluating least-privilege boundaries, and rehearsing incident response playbooks for misbehaving IEDs.
 
 ## System Architecture
@@ -58,54 +60,7 @@ The protection system transmits the following data:
 | Fault Type | Integer | 0=No Fault, 1=Overcurrent, 2=Differential, 3=Distance | 0 |
 | Protection Element | Integer | IEEE device number (e.g., 50, 87, 21) | 50 |
 | Fault Current | Float | Measured fault current in Amperes | 1250.5 |
-| Fault Voltage | Float | Measured voltage in Volts | 10500.0 |
-| Frequency | Float | System frequency in Hz | 49.8 |
-
-## Project Structure
-
-```
-virtual substation/
-├── libiec61850/                    # IEC 61850 library (v1.6)
-│   ├── examples/
-│   │   ├── goose_publisher/        # Enhanced publisher with protection data
-│   │   └── goose_subscriber/       # Enhanced subscriber with live display
-│   └── build/libiec61850.a         # Compiled library
-├── protection_gui.py               # Protection IED GUI (Publisher)
-├── breaker_gui.py                  # Breaker IED GUI (Subscriber)
-├── start_protection.sh             # Protection IED launcher
-├── start_breaker.sh                # Breaker IED launcher
-├── stop_all.sh                     # Stop all processes script
-├── goose_setup.sh                  # Setup helper script
-├── test_goose.sh                   # Verification script
-└── README.md                       # This documentation
-```
-
-## 🎮 Usage
-
-### GUI Mode (Recommended)
-```bash
-# Terminal 1 - Protection IED (Publisher)
-sudo ./start_protection.sh <interface>
-
-# Terminal 2 - Breaker IED (Subscriber)  
-sudo ./start_breaker.sh <interface>
-
-# Stop all processes
-./stop_all.sh
-```
-
-### Command Line Mode
-```bash
-# Terminal 1 - Subscriber
-cd libiec61850/examples/goose_subscriber
-sudo ./goose_subscriber_example <interface>
-
-# Terminal 2 - Publisher
-cd libiec61850/examples/goose_publisher
-sudo ./goose_publisher_example <interface>
-```
-
-### Available Interfaces
+@@ -105,63 +109,70 @@ sudo ./goose_publisher_example <interface>
 ```bash
 ip link show  # List all interfaces
 # Common: eth0, enp0s3, enp0s8, wlan0
@@ -143,22 +98,23 @@ Any deployment that requires interoperability with other IEC 61850 equipment m
 
 ## OT Security Use Cases
 
+### GOOSE Timing (IEC 61850-8-1)
+- **Fast Retransmission:** 4ms intervals for first 3 messages after state change
+- **Stabilization:** 100ms intervals for next few messages
+- **Heartbeat:** 1000ms intervals during normal operation
+- **Time to Live:** 500ms for message validity
 While the data model is simplified, the project offers a convenient sandbox for cyber-physical security research and training:
 
+### Network Configuration
+- **Application ID:** 1000 (Protection)
+- **Destination MAC:** 01:0c:cd:01:00:01 (GOOSE multicast)
+- **VLAN Priority:** 4 (High priority for protection)
+- **VLAN ID:** 0 (Untagged)
 - **Traffic analysis practice:** Capture and dissect GOOSE frames to understand how control signals appear on the wire, how configuration revisions manifest, and where deviations from the SCL model surface.
-- **Privilege and file-permission drills:** Explore the interplay between privileged publisher/subscriber binaries and unprivileged GUIs, including how umask, ownership, and background guards keep shared telemetry accessible.
 - **Attack simulation:** Experiment with intentionally malformed datasets, delayed heartbeats, or tampered shared files to observe how the system reacts and to craft defensive monitoring rules.
 - **Incident response tabletop exercises:** Use the GUIs and launcher scripts to rehearse detection and recovery procedures that map to OT playbooks without risking real equipment.
 
 These OT-focused activities complement the electrical engineering perspective, making the repository useful for blue-team training, security research, and demonstrations of how process control software can fail under adversarial conditions.
-
-## Network Interfaces
-
-Supported interfaces (auto-detected):
-- `enp0s3` - Primary network interface
-- `enp0s8` - Secondary network interface  
-- `enp0s9` - Tertiary network interface
-- `eth0` - Legacy Ethernet interface
 
 ## System Requirements
 
@@ -176,31 +132,7 @@ git clone https://github.com/yourusername/virtual-substation.git
 cd virtual-substation
 ./install.sh
 ```
-
-### Manual Installation
-```bash
-# Install dependencies
-sudo apt update
-sudo apt install -y build-essential gcc make python3 python3-tk
-
-# Build library
-cd libiec61850
-make lib
-
-# Build examples
-cd examples/goose_publisher && make
-cd ../goose_subscriber && make
-
-# Set permissions
-chmod +x *.sh
-```
-
-### Verification
-```bash
-./check_status.sh  # Check system status
-ip link show       # List network interfaces
-```
-
+@@ -193,26 +204,36 @@ ip link show       # List network interfaces
 ## Troubleshooting
 
 | Issue | Solution |
@@ -227,13 +159,3 @@ This project demonstrates:
 - **Development:** Prototype new protection algorithms
 - **Education:** Understand power system protection principles
 - **Research:** Experiment with GOOSE message structures and timing
-
-## Resolving Merge Conflicts
-
-Because this repository customizes both the launcher scripts and the bundled `libiec61850` examples, upstream updates to those same files often collide with local changes. When you pull new commits and Git reports conflicts:
-
-1. **Review the overlapping edits.** Most conflicts appear in `start_breaker.sh`, `start_protection.sh`, or `libiec61850/examples/goose_subscriber/goose_subscriber_example.c`, so open each file and decide which logic should remain.
-2. **Stage the reconciled file.** After editing the conflict markers out of a file, run `git add <file>` to mark it as resolved.
-3. **Continue the merge or rebase.** Finish with `git merge --continue` or `git rebase --continue`, then run your usual tests.
-
-If the conflicts stem from recurring local customizations, consider isolating your changes in separate scripts or patches so they can be re-applied with `git rebase --rebase-merges` or tooling like `git rerere` the next time you update from upstream.
