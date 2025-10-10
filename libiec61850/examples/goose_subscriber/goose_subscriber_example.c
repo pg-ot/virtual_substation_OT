@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <signal.h>
+#include <sys/stat.h>
 
 static int running = 1;
 
@@ -74,10 +75,16 @@ gooseListener(GooseSubscriber subscriber, void* parameter)
         // Write data to shared file for GUI
         FILE *f = fopen("/tmp/goose_data.txt", "w");
         if (f) {
-            fprintf(f, "%d,%d,%d,%d,%.1f,%.0f,%.1f", 
-                   tripCommand ? 1 : 0, closeCommand ? 1 : 0, 
+            fprintf(f, "%d,%d,%d,%d,%.1f,%.0f,%.1f",
+                   tripCommand ? 1 : 0, closeCommand ? 1 : 0,
                    faultType, protElement, faultCurrent, faultVoltage, frequency);
             fclose(f);
+
+            /* Ensure the GUI (running unprivileged) can read updates written by the
+             * privileged subscriber even when sudo applies a restrictive umask. */
+            if (chmod("/tmp/goose_data.txt", S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH) != 0) {
+                perror("chmod /tmp/goose_data.txt");
+            }
         }
     }
     
