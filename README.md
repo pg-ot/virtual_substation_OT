@@ -1,14 +1,27 @@
-# Virtual Substation - IEC 61850 GOOSE Communication System
+# 🏭 Virtual Substation – IEC 61850 GOOSE for OT/ICS Security Labs
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Platform](https://img.shields.io/badge/Platform-Linux-blue.svg)](https://www.linux.org/)
 [![IEC 61850](https://img.shields.io/badge/Standard-IEC%2061850-green.svg)](https://en.wikipedia.org/wiki/IEC_61850)
 
-A complete virtual substation implementation demonstrating IEC 61850 GOOSE (Generic Object Oriented Substation Event) communication between Protection IED and Breaker IED using libiec61850 library.
+A **virtual substation** that demonstrates IEC 61850 GOOSE communication between a **Protection IED** (publisher) and a **Breaker IED** (subscriber) using `libiec61850` — enhanced for **OT/ICS security training, testing, and research**.  
+Ideal for **blue-team detection labs**, **red-team simulations**, and **hands-on industrial-protocol forensics**.
 
-> ⚠️ **Disclaimer**
->
-> This repository is intended for educational experimentation only. The included publisher and subscriber do **not** produce or consume IEC 61850-compliant GOOSE datasets, the configuration revision embedded in the messages diverges from the provided SCL model, and the default heartbeat interval conflicts with the advertised `TimeAllowedToLive`. Do not rely on this code for standards-compliant interoperability or any safety-critical application without substantial rework of the data model and implementation.
+> ⚠️ **Disclaimer**  
+> This repository is for **educational and lab use only**.  
+> The included publisher/subscriber diverge from strict IEC 61850 conformance (dataset, confRev, TTL timing) to simplify demonstrations.  
+> **Never use** this code in production, live substations, or for interoperability claims without redesign.
+
+---
+
+## 🧭 Why This Project (Security Angle)
+
+- 🔍 **Blue-team** – Identify normal vs. anomalous GOOSE behavior (`stNum`/`sqNum`, TTL expiry, confRev drift).  
+- 🧨 **Red-team** – Safely simulate malformed frames, replay bursts, or multicast spoofing in an isolated lab.  
+- 🧰 **Forensics** – Capture, decode, and correlate packets to MITRE ATT&CK for ICS (e.g., *T0843 – Manipulation of Control*).  
+- 🧱 **Controls testing** – Validate VLAN segregation, IGMP snooping, storm control, and port-based ACLs.
+
+---
 
 ## 🚀 Quick Start
 
@@ -17,203 +30,148 @@ git clone https://github.com/yourusername/virtual-substation.git
 cd virtual-substation
 ./install.sh
 
-# Terminal 1 - Protection IED
+# Terminal 1 – Protection IED (publisher)
 sudo ./start_protection.sh eth0
 
-# Terminal 2 - Breaker IED  
+# Terminal 2 – Breaker IED (subscriber + GUI)
 sudo ./start_breaker.sh eth0
 
 # Stop all
 ./stop_all.sh
-```
-
-## Project Overview
-
-This project simulates a simplified substation protection system where:
-- **Protection IED** detects faults and sends trip/close commands via GOOSE messages
-- **Breaker IED** receives commands and operates the circuit breaker accordingly
-- Communication mimics IEC 61850-8-1 messaging for demonstration purposes only
-
-## System Architecture
-
-```
-┌─────────────────┐    GOOSE Messages    ┌─────────────────┐
-│  Protection IED │ ──────────────────► │   Breaker IED   │
-│   (Publisher)   │   Ethernet/VLAN     │  (Subscriber)   │
-│                 │                     │                 │
-│ • Fault Detection│                     │ • Trip/Close    │
-│ • Trip Commands │                     │ • Status Display│
-│ • Measurements  │                     │ • Breaker Ctrl  │
-└─────────────────┘                     └─────────────────┘
-```
-
-## GOOSE Message Content
-
-The protection system transmits the following data:
-
-| Data Point | Type | Description | Example |
-|------------|------|-------------|----------|
-| Trip Command | Boolean | Circuit breaker trip signal | true/false |
-| Close Command | Boolean | Circuit breaker close signal | true/false |
-| Fault Type | Integer | 0=No Fault, 1=Overcurrent, 2=Differential, 3=Distance | 0 |
-| Protection Element | Integer | IEEE device number (e.g., 50, 87, 21) | 50 |
-| Fault Current | Float | Measured fault current in Amperes | 1250.5 |
-| Fault Voltage | Float | Measured voltage in Volts | 10500.0 |
-| Frequency | Float | System frequency in Hz | 49.8 |
-
-## Project Structure
-
-```
-virtual substation/
-├── libiec61850/                    # IEC 61850 library (v1.6)
-│   ├── examples/
-│   │   ├── goose_publisher/        # Enhanced publisher with protection data
-│   │   └── goose_subscriber/       # Enhanced subscriber with live display
-│   └── build/libiec61850.a         # Compiled library
-├── protection_gui.py               # Protection IED GUI (Publisher)
-├── breaker_gui.py                  # Breaker IED GUI (Subscriber)
-├── start_protection.sh             # Protection IED launcher
-├── start_breaker.sh                # Breaker IED launcher
-├── stop_all.sh                     # Stop all processes script
-├── goose_setup.sh                  # Setup helper script
-├── test_goose.sh                   # Verification script
-└── README.md                       # This documentation
-```
-
-## 🎮 Usage
-
-### GUI Mode (Recommended)
-```bash
-# Terminal 1 - Protection IED (Publisher)
-sudo ./start_protection.sh <interface>
-
-# Terminal 2 - Breaker IED (Subscriber)  
-sudo ./start_breaker.sh <interface>
-
-# Stop all processes
-./stop_all.sh
-```
-
-### Command Line Mode
-```bash
-# Terminal 1 - Subscriber
+Command-Line Mode (no GUI)
+bash
+Copy code
 cd libiec61850/examples/goose_subscriber
 sudo ./goose_subscriber_example <interface>
 
-# Terminal 2 - Publisher
-cd libiec61850/examples/goose_publisher
+cd ../goose_publisher
 sudo ./goose_publisher_example <interface>
-```
+⚙️ Architecture Overview
+mathematica
+Copy code
+┌─────────────────┐    GOOSE Multicast    ┌─────────────────┐
+│  Protection IED │ ────────────────────► │ Breaker IED │
+│ (Publisher) │     Ethernet/VLAN 802.1Q  │ (Subscriber) │
+│ • Fault Logic   │                       │ • Trip/Close Actuation │
+│ • Trip/Close Cmd│                       │ • Live GUI Display │
+└─────────────────┘                       └─────────────────┘
+📡 GOOSE Dataset (Example)
+#	Signal	Type	Description	Example
+1	Trip Cmd	Boolean	Breaker open signal	true
+2	Close Cmd	Boolean	Breaker close signal	false
+3	Fault Type	Int	0=No fault 1=OC 2=Diff 3=Dist	1
+4	Prot Element	Int	Device number (50/87/21 etc.)	50
+5	Fault Current	Float	Amps	1250.5
+6	Fault Voltage	Float	Volts	10500.0
+7	Frequency	Float	Hz	49.8
 
-### Available Interfaces
-```bash
-ip link show  # List all interfaces
-# Common: eth0, enp0s3, enp0s8, wlan0
-```
+🧩 Folder Structure
+cpp
+Copy code
+virtual-substation/
+├── libiec61850/
+│   └── examples/
+│       ├── goose_publisher/
+│       └── goose_subscriber/
+├── protection_gui.py
+├── breaker_gui.py
+├── start_protection.sh
+├── start_breaker.sh
+├── stop_all.sh
+└── README.md
+🔐 OT Security Scenarios
+🧪 Perform all tests inside an isolated lab or VM-only network.
 
-## GUI Features
+1️⃣ Baseline Traffic
+bash
+Copy code
+sudo tcpdump -i eth0 ether proto 0x88b8 -w goose-baseline.pcap
+→ Observe stNum, sqNum, and TTL progression in Wireshark.
 
-### Protection IED GUI (Publisher)
-- **Trip/Close Commands:** Toggle switches for breaker control
-- **Fault Configuration:** Dropdown for fault types (No Fault/Overcurrent/Differential/Distance)
-- **Live Measurements:** Color-coded sliders for Current (0-5000A), Voltage (0-15kV), Frequency (45-55Hz)
-  - **Green:** Normal operating range
-  - **Yellow:** Abnormal but non-tripping range  
-  - **Red:** Fault range that triggers protection
-- **Protection Logic:** Automatic fault detection and trip commands
-- **Real-time Publishing:** Dynamic GOOSE message generation based on GUI inputs
-- **Auto-start:** Automatically begins publishing when launched by start script
+2️⃣ Heartbeat & TTL Stress
+Toggle faults and trip signals; note TTL expiration alerts.
 
-### Breaker IED GUI (Subscriber)
-- **Command Display:** Visual indicators for received Trip/Close commands
-- **Breaker Status:** Animated breaker position (Open/Closed)
-- **Fault Information:** Real-time display of fault type and protection element
-- **Measurements:** Live display of current, voltage, and frequency
-- **Connection Status:** Timestamp of last received message
+3️⃣ ConfRev Mismatch / Denial
+ConfRev differs from SCL – verify detection in GOOSE decoder.
 
-## IEC 61850 Compliance Notes
+4️⃣ Replay Burst (Attack Sim)
+bash
+Copy code
+sudo tcpreplay --intf1=eth0 goose-baseline.pcap
+→ Watch for sqNum reversals and timestamp anomalies.
 
-Although the project draws on libiec61850 and exchanges GOOSE frames, several aspects intentionally diverge from the IEC 61850-8-1 standard and the provided SCL configuration:
+5️⃣ Multicast Segregation
+Test VLAN and IGMP controls prevent off-bus propagation.
 
-- **Dataset structure mismatch:** The publisher encodes a seven-element mix of boolean, integer, and float values, whereas the SCL `AnalogValues` dataset models four `MV` measurements that include magnitude, quality, and timestamp members. Standards-compliant subscribers will therefore reject these messages.
-- **Configuration revision inconsistency:** The hard-coded `GoCBRef` advertises `ConfRev=1`, but the SCL model defines `confRev="2"`, causing compliant clients to treat the traffic as stale.
-- **Heartbeat timing conflict:** The idle retransmission interval is 1000 ms even though `TimeAllowedToLive` is set to 500 ms, so conforming subscribers will flag the messages as expired mid-cycle.
+⚠️ IEC 61850 Compliance Notes
+Deviation	Impact
+Dataset mismatch (7-element flat list)	Non-compliant with MV/Q/T structure.
+confRev inconsistency	Frames appear stale to strict stacks.
+TTL vs heartbeat conflict	Subscribers flag expired messages.
 
-Any deployment that requires interoperability with other IEC 61850 equipment must reconcile these discrepancies (for example by updating the SCL model, adjusting the publisher/subscriber payloads, and aligning retransmission timing) before attempting integration.
+To achieve interoperability: realign SCL, rebuild datasets, and sync heartbeat/TTL with IEC 61850-8-1.
 
-## Network Interfaces
+💻 Requirements
+Linux (Ubuntu/Debian recommended)
 
-Supported interfaces (auto-detected):
-- `enp0s3` - Primary network interface
-- `enp0s8` - Secondary network interface  
-- `enp0s9` - Tertiary network interface
-- `eth0` - Legacy Ethernet interface
+Root access for raw sockets
 
-## System Requirements
+Python 3 with Tkinter
 
-- **Operating System:** Linux (Ubuntu/Debian recommended)
-- **Privileges:** Root access for raw socket operations
-- **Python:** Python 3.x with tkinter for GUI
-- **Network:** Ethernet interface for GOOSE communication
-- **Compiler:** GCC for building libiec61850 examples
+GCC / Make
 
-## 📦 Installation
+libiec61850 v1.6+
 
-### Automatic Installation (Recommended)
-```bash
-git clone https://github.com/yourusername/virtual-substation.git
-cd virtual-substation
-./install.sh
-```
+List interfaces:
 
-### Manual Installation
-```bash
-# Install dependencies
+bash
+Copy code
+ip link show
+🔧 Manual Build
+bash
+Copy code
 sudo apt update
 sudo apt install -y build-essential gcc make python3 python3-tk
-
-# Build library
-cd libiec61850
-make lib
-
-# Build examples
+cd libiec61850 && make lib
 cd examples/goose_publisher && make
 cd ../goose_subscriber && make
-
-# Set permissions
 chmod +x *.sh
-```
+🧠 Security Lab Usage
+Purpose	Tool/Method
+Packet analysis	Wireshark (eth.type == 0x88B8)
+Frame logging	tcpdump or Scapy
+Blue-team validation	Detect TTL, confRev, sqNum anomalies
+Red-team simulation	Replay, inject, spoof MAC (offline only)
+Hardening tests	VLAN separation, storm control, ACLs
 
-### Verification
-```bash
-./check_status.sh  # Check system status
-ip link show       # List network interfaces
-```
+🧱 Ethical & Safety Guidelines
+Use offline labs only – never on production networks.
 
-## Troubleshooting
+Obtain authorization for any security tests.
 
-| Issue | Solution |
-|-------|----------|
-| Permission denied | Run with `sudo` |
-| Interface not found | Check `ip link show` and use correct interface |
-| GUI compilation error | Ensure libiec61850 is built: `cd libiec61850 && make lib` |
-| No GOOSE communication | Verify both devices use same network interface |
-| Python GUI not starting | Install tkinter: `sudo apt install python3-tk` |
+Prefer passive monitoring before injection.
 
-## Educational Context
+Document risks and safeguards for trainees.
 
-This project demonstrates:
-- **IEC 61850 Standard:** International standard for substation automation
-- **GOOSE Protocol:** Fast, reliable communication for protection systems
-- **Virtual IEDs:** Software simulation of Intelligent Electronic Devices
-- **Protection Logic:** Fault detection and circuit breaker control
-- **Real-time Systems:** Time-critical communication in power systems
+🗺️ Future Enhancements
+Standards-aligned SCL mode
 
-## Use Cases
+Replay/fuzz toggle for attack simulation
 
-- **Training:** Learn IEC 61850 and substation automation concepts
-- **Testing:** Validate protection logic and communication timing
-- **Development:** Prototype new protection algorithms
-- **Education:** Understand power system protection principles
-- **Research:** Experiment with GOOSE message structures and timing
+Suricata/Wireshark detection rule set
 
+Dockerized multi-IED topology
+
+Optional PCAP stream generator
+
+📜 License
+Released under the MIT License.
+
+Acknowledgements
+Built on libiec61850.
+Special thanks to the OT security community advancing safe training and research in industrial networks.
+
+yaml
+Copy code
+
+---
