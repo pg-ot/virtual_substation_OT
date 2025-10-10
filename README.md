@@ -6,6 +6,10 @@
 
 A complete virtual substation implementation demonstrating IEC 61850 GOOSE (Generic Object Oriented Substation Event) communication between Protection IED and Breaker IED using libiec61850 library.
 
+> ⚠️ **Disclaimer**
+>
+> This repository is intended for educational experimentation only. The included publisher and subscriber do **not** produce or consume IEC 61850-compliant GOOSE datasets, the configuration revision embedded in the messages diverges from the provided SCL model, and the default heartbeat interval conflicts with the advertised `TimeAllowedToLive`. Do not rely on this code for standards-compliant interoperability or any safety-critical application without substantial rework of the data model and implementation.
+
 ## 🚀 Quick Start
 
 ```bash
@@ -25,10 +29,10 @@ sudo ./start_breaker.sh eth0
 
 ## Project Overview
 
-This project simulates a real substation protection system where:
+This project simulates a simplified substation protection system where:
 - **Protection IED** detects faults and sends trip/close commands via GOOSE messages
 - **Breaker IED** receives commands and operates the circuit breaker accordingly
-- Communication follows IEC 61850-8-1 standard with proper timing sequences
+- Communication mimics IEC 61850-8-1 messaging for demonstration purposes only
 
 ## System Architecture
 
@@ -127,19 +131,15 @@ ip link show  # List all interfaces
 - **Measurements:** Live display of current, voltage, and frequency
 - **Connection Status:** Timestamp of last received message
 
-## IEC 61850 Compliance
+## IEC 61850 Compliance Notes
 
-### GOOSE Timing (IEC 61850-8-1)
-- **Fast Retransmission:** 4ms intervals for first 3 messages after state change
-- **Stabilization:** 100ms intervals for next few messages
-- **Heartbeat:** 1000ms intervals during normal operation
-- **Time to Live:** 500ms for message validity
+Although the project draws on libiec61850 and exchanges GOOSE frames, several aspects intentionally diverge from the IEC 61850-8-1 standard and the provided SCL configuration:
 
-### Network Configuration
-- **Application ID:** 1000 (Protection)
-- **Destination MAC:** 01:0c:cd:01:00:01 (GOOSE multicast)
-- **VLAN Priority:** 4 (High priority for protection)
-- **VLAN ID:** 0 (Untagged)
+- **Dataset structure mismatch:** The publisher encodes a seven-element mix of boolean, integer, and float values, whereas the SCL `AnalogValues` dataset models four `MV` measurements that include magnitude, quality, and timestamp members. Standards-compliant subscribers will therefore reject these messages.
+- **Configuration revision inconsistency:** The hard-coded `GoCBRef` advertises `ConfRev=1`, but the SCL model defines `confRev="2"`, causing compliant clients to treat the traffic as stale.
+- **Heartbeat timing conflict:** The idle retransmission interval is 1000 ms even though `TimeAllowedToLive` is set to 500 ms, so conforming subscribers will flag the messages as expired mid-cycle.
+
+Any deployment that requires interoperability with other IEC 61850 equipment must reconcile these discrepancies (for example by updating the SCL model, adjusting the publisher/subscriber payloads, and aligning retransmission timing) before attempting integration.
 
 ## Network Interfaces
 
