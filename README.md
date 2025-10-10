@@ -30,7 +30,6 @@ sudo ./start_breaker.sh eth0
 
 ## Project Overview
 
-This project simulates a real substation protection system where:
 This project simulates a simplified substation protection system where:
 - **Protection IED** detects faults and sends trip/close commands via GOOSE messages
 - **Breaker IED** receives commands and operates the circuit breaker accordingly
@@ -87,7 +86,6 @@ ip link show  # List all interfaces
 - **Measurements:** Live display of current, voltage, and frequency
 - **Connection Status:** Timestamp of last received message
 
-## IEC 61850 Compliance
 ## IEC 61850 Compliance Notes
 
 Although the project draws on libiec61850 and exchanges GOOSE frames, several aspects intentionally diverge from the IEC 61850-8-1 standard and the provided SCL configuration:
@@ -113,19 +111,10 @@ While the data model is simplified, the project offers a convenient sandbox for 
 - **VLAN Priority:** 4 (High priority for protection)
 - **VLAN ID:** 0 (Untagged)
 - **Traffic analysis practice:** Capture and dissect GOOSE frames to understand how control signals appear on the wire, how configuration revisions manifest, and where deviations from the SCL model surface.
-- **Privilege and file-permission drills:** Explore the interplay between privileged publisher/subscriber binaries and unprivileged GUIs, including how umask, ownership, and background guards keep shared telemetry accessible.
 - **Attack simulation:** Experiment with intentionally malformed datasets, delayed heartbeats, or tampered shared files to observe how the system reacts and to craft defensive monitoring rules.
 - **Incident response tabletop exercises:** Use the GUIs and launcher scripts to rehearse detection and recovery procedures that map to OT playbooks without risking real equipment.
 
 These OT-focused activities complement the electrical engineering perspective, making the repository useful for blue-team training, security research, and demonstrations of how process control software can fail under adversarial conditions.
-
-## Network Interfaces
-
-Supported interfaces (auto-detected):
-- `enp0s3` - Primary network interface
-- `enp0s8` - Secondary network interface  
-- `enp0s9` - Tertiary network interface
-- `eth0` - Legacy Ethernet interface
 
 ## System Requirements
 
@@ -170,14 +159,3 @@ This project demonstrates:
 - **Development:** Prototype new protection algorithms
 - **Education:** Understand power system protection principles
 - **Research:** Experiment with GOOSE message structures and timing
-- **Research:** Experiment with GOOSE message structures and timing
-
-## Resolving Merge Conflicts
-
-Because this repository customizes both the launcher scripts and the bundled `libiec61850` examples, upstream updates to those same files often collide with local changes. When you pull new commits and Git reports conflicts:
-
-1. **Review the overlapping edits.** Most conflicts appear in `start_breaker.sh`, `start_protection.sh`, or `libiec61850/examples/goose_subscriber/goose_subscriber_example.c`, so open each file and decide which logic should remain.
-2. **Stage the reconciled file.** After editing the conflict markers out of a file, run `git add <file>` to mark it as resolved.
-3. **Continue the merge or rebase.** Finish with `git merge --continue` or `git rebase --continue`, then run your usual tests.
-
-If the conflicts stem from recurring local customizations, consider isolating your changes in separate scripts or patches so they can be re-applied with `git rebase --rebase-merges` or tooling like `git rerere` the next time you update from upstream.
