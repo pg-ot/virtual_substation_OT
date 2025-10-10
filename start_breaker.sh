@@ -50,7 +50,7 @@ start_privileged_background() {
     echo $!
 }
 
-# Guard to fix ownership/permissions of GOOSE_FILE if the privileged process creates it
+# Guard to fix ownership/permissions of GOOSE_FILE if a privileged process creates it
 start_permission_guard() {
     local uid gid
     uid=$(id -u)
@@ -93,12 +93,12 @@ cleanup() {
         wait "$PERMISSION_GUARD_PID" 2>/dev/null || true
     fi
 
-    if [ -n "${GUI_PID:-}" ] && kill -0 "$GUI_PID" 2>/dev/null; then
-        kill "$GUI_PID" 2>/dev/null || true
+    if [ -n "${GUI_PID:-}" ] && run_with_privileges kill -0 "$GUI_PID" 2>/dev/null; then
+        run_with_privileges kill "$GUI_PID" 2>/dev/null || true
     fi
 
     run_with_privileges pkill -f goose_subscriber_example 2>/dev/null || true
-    pkill -f breaker_gui.py 2>/dev/null || true
+    run_with_privileges pkill -f "$SCRIPT_DIR/breaker_gui.py" 2>/dev/null || true
     run_with_privileges rm -f "$GOOSE_FILE" 2>/dev/null || true
 }
 
@@ -110,7 +110,7 @@ echo ""
 
 # Clean up any existing processes and files
 run_with_privileges pkill -f goose_subscriber_example 2>/dev/null || true
-pkill -f breaker_gui.py 2>/dev/null || true
+run_with_privileges pkill -f "$SCRIPT_DIR/breaker_gui.py" 2>/dev/null || true
 run_with_privileges rm -f "$GOOSE_FILE" 2>/dev/null || true
 
 # Initialize GOOSE data file with safe permissions
@@ -119,9 +119,10 @@ umask 022
 echo "0,0,0,50,0.0,0,49.8" > "$GOOSE_FILE"
 umask "$ORIG_UMASK"
 
-# Start the GUI first so it’s ready to read the file
+# Start the GUI first (with sudo if needed)
+echo "Starting Breaker GUI with elevated privileges..."
 if command -v python3 >/dev/null 2>&1; then
-    python3 "$SCRIPT_DIR/breaker_gui.py" "$INTERFACE" &
+    run_with_privileges python3 "$SCRIPT_DIR/breaker_gui.py" "$INTERFACE" &
 else
     echo "python3 not found. Please install Python 3.x." >&2
     exit 1
@@ -137,7 +138,7 @@ echo "GUI will display received protection data"
 echo "Press Ctrl+C to stop both GUI and subscriber"
 SUBSCRIBER_PID=$(start_privileged_background "$SUBSCRIBER_DIR" ./goose_subscriber_example "$INTERFACE")
 
-# Start the permission guard to keep /tmp/goose_data.txt readable
+# Keep the permission guard (harmless when both are root; useful if GUI runs unprivileged later)
 start_permission_guard
 
 # Wait for subscriber to finish (e.g., if it crashes/exits)
