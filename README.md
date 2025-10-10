@@ -217,12 +217,3 @@ This project demonstrates:
 - **Education:** Understand power system protection principles
 - **Research:** Experiment with GOOSE message structures and timing
 
-## Resolving Merge Conflicts
-
-Because this repository customizes both the launcher scripts and the bundled `libiec61850` examples, upstream updates to those same files often collide with local changes. When you pull new commits and Git reports conflicts:
-
-1. **Review the overlapping edits.** Most conflicts appear in `start_breaker.sh`, `start_protection.sh`, or `libiec61850/examples/goose_subscriber/goose_subscriber_example.c`, so open each file and decide which logic should remain.
-2. **Stage the reconciled file.** After editing the conflict markers out of a file, run `git add <file>` to mark it as resolved.
-3. **Continue the merge or rebase.** Finish with `git merge --continue` or `git rebase --continue`, then run your usual tests.
-
-If the conflicts stem from recurring local customizations, consider isolating your changes in separate scripts or patches so they can be re-applied with `git rebase --rebase-merges` or tooling like `git rerere` the next time you update from upstream.
