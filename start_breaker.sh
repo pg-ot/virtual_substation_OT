@@ -20,6 +20,18 @@ GOOSE_FILE="/tmp/goose_data.txt"
 PERMISSION_GUARD_PID=""
 GUI_PID=""
 
+# Pass through important env to sudo sessions (for libs/datasets)
+SUDO_ENV_VARS=()
+if [ -n "${LD_LIBRARY_PATH:-}" ]; then
+    SUDO_ENV_VARS+=("LD_LIBRARY_PATH=$LD_LIBRARY_PATH")
+fi
+if [ -n "${LIBIEC61850_HOME:-}" ]; then
+    SUDO_ENV_VARS+=("LIBIEC61850_HOME=$LIBIEC61850_HOME")
+fi
+if [ -n "${IEC61850_DATA_DIR:-}" ]; then
+    SUDO_ENV_VARS+=("IEC61850_DATA_DIR=$IEC61850_DATA_DIR")
+fi
+
 # Effective/Caller UID & GID so the root-run subscriber can hand off file ownership
 EFFECTIVE_UID=$(id -u)
 if [ -n "${SUDO_UID:-}" ]; then
@@ -57,11 +69,13 @@ start_privileged_background() {
     shift
     if [ -n "$SUDO" ]; then
         (cd "$dir" && "$SUDO" env \
+            "${SUDO_ENV_VARS[@]}" \
             "GOOSE_FILE_OWNER_UID=$CALLER_UID" \
             "GOOSE_FILE_OWNER_GID=$CALLER_GID" \
             bash -c 'umask 022; exec "$@"' bash "$@") &
     else
         (cd "$dir" && env \
+            "${SUDO_ENV_VARS[@]}" \
             "GOOSE_FILE_OWNER_UID=$CALLER_UID" \
             "GOOSE_FILE_OWNER_GID=$CALLER_GID" \
             bash -c 'umask 022; exec "$@"' bash "$@") &
@@ -71,19 +85,16 @@ start_privileged_background() {
 
 start_permission_guard() {
     local uid="$CALLER_UID" gid="$CALLER_GID"
-
     (
         while true; do
             # Exit if subscriber died
             if [ -n "${SUBSCRIBER_PID:-}" ] && ! kill -0 "$SUBSCRIBER_PID" 2>/dev/null; then
                 break
             fi
-
             if [ -e "$GOOSE_FILE" ]; then
                 run_with_privileges chown "$uid:$gid" "$GOOSE_FILE" 2>/dev/null || true
                 run_with_privileges chmod 664 "$GOOSE_FILE" 2>/dev/null || true
             fi
-
             sleep 1
         done
     ) &

@@ -1,9 +1,8 @@
 /*
  * goose_subscriber_example.c
  *
- * This is an example for a standalone GOOSE subscriber
- *
- * Has to be started as root in Linux.
+ * Standalone GOOSE subscriber.
+ * Must be started as root on Linux.
  */
 
 #include "goose_receiver.h"
@@ -23,6 +22,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define GOOSE_SHARED_FILE "/tmp/goose_data.txt"
+#define GOOSE_FILE_MODE (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH)
+
 static int running = 1;
 
 static void
@@ -37,6 +39,27 @@ static int haveTargetUid = 0;
 static uid_t targetUid;
 static int haveTargetGid = 0;
 static gid_t targetGid;
+
+/* If env doesn’t provide UID/GID, adopt from an existing file so the GUI can read it */
+static void
+adoptExistingOwnership(void)
+{
+    if (haveTargetUid && haveTargetGid)
+        return;
+
+    struct stat existingStat;
+    if (stat(GOOSE_SHARED_FILE, &existingStat) != 0)
+        return;
+
+    if (!haveTargetUid) {
+        targetUid = existingStat.st_uid;
+        haveTargetUid = 1;
+    }
+    if (!haveTargetGid) {
+        targetGid = existingStat.st_gid;
+        haveTargetGid = 1;
+    }
+}
 
 static void
 initFileOwnership(void)
@@ -65,6 +88,9 @@ initFileOwnership(void)
             haveTargetGid = 1;
         }
     }
+
+    if (!haveTargetUid || !haveTargetGid)
+        adoptExistingOwnership();
 }
 
 static void
@@ -86,7 +112,6 @@ writeSharedDataset(bool tripCommand,
                            faultCurrent,
                            faultVoltage,
                            frequency);
-
     if (written < 0) {
         perror("snprintf goose dataset");
         return;
@@ -94,53 +119,59 @@ writeSharedDataset(bool tripCommand,
 
     size_t bufferLen = strnlen(buffer, sizeof(buffer));
 
+    adoptExistingOwnership();
+
     char tempTemplate[] = "/tmp/goose_data.txt.XXXXXX";
     int fd = mkstemp(tempTemplate);
-
     if (fd < 0) {
         perror("mkstemp goose_data");
         return;
     }
 
-    if (fchmod(fd, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH) != 0)
+    if (fchmod(fd, GOOSE_FILE_MODE) != 0)
         perror("fchmod goose_data temp");
 
     if (haveTargetUid || haveTargetGid) {
         uid_t uid = haveTargetUid ? targetUid : (uid_t) -1;
         gid_t gid = haveTargetGid ? targetGid : (gid_t) -1;
-
         if (fchown(fd, uid, gid) != 0)
             perror("fchown goose_data temp");
     }
 
-    ssize_t toWrite = (ssize_t) bufferLen;
+    ssize_t toWrite = (ssize_t)bufferLen;
     ssize_t totalWritten = 0;
-
     while (totalWritten < toWrite) {
         ssize_t chunk = write(fd, buffer + totalWritten, (size_t)(toWrite - totalWritten));
         if (chunk < 0) {
-            if (errno == EINTR)
-                continue;
-
+            if (errno == EINTR) continue;
             perror("write goose_data temp");
             close(fd);
             unlink(tempTemplate);
             return;
         }
-
         totalWritten += chunk;
     }
 
     if (fsync(fd) != 0)
         perror("fsync goose_data temp");
-
     if (close(fd) != 0)
         perror("close goose_data temp");
 
-    if (rename(tempTemplate, "/tmp/goose_data.txt") != 0) {
+    if (rename(tempTemplate, GOOSE_SHARED_FILE) != 0) {
         perror("rename goose_data temp");
         unlink(tempTemplate);
+        return;
     }
+
+    /* Reassert final ownership/mode in case rename replaced an existing file */
+    if (haveTargetUid || haveTargetGid) {
+        uid_t uid = haveTargetUid ? targetUid : (uid_t) -1;
+        gid_t gid = haveTargetGid ? targetGid : (gid_t) -1;
+        if (chown(GOOSE_SHARED_FILE, uid, gid) != 0)
+            perror("chown goose_data final");
+    }
+    if (chmod(GOOSE_SHARED_FILE, GOOSE_FILE_MODE) != 0)
+        perror("chmod goose_data final");
 }
 
 static void
@@ -149,7 +180,7 @@ gooseListener(GooseSubscriber subscriber, void* parameter)
     (void)parameter;
     initFileOwnership();
 
-    // Clear screen and move cursor to top
+    /* Clear screen and move cursor to top */
     printf("\033[2J\033[H");
 
     printf("=== GOOSE SUBSCRIBER - LIVE DATA ===\n\n");
@@ -229,7 +260,6 @@ main(int argc, char** argv)
     GooseSubscriber_setAppId(subscriber, 1000);
 
     GooseSubscriber_setListener(subscriber, gooseListener, NULL);
-
     GooseReceiver_addSubscriber(receiver, subscriber);
 
     GooseReceiver_start(receiver);
@@ -248,8 +278,6 @@ main(int argc, char** argv)
     }
 
     GooseReceiver_stop(receiver);
-
     GooseReceiver_destroy(receiver);
-
     return 0;
 }
