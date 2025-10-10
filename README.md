@@ -4,7 +4,6 @@
 [![Platform](https://img.shields.io/badge/Platform-Linux-blue.svg)](https://www.linux.org/)
 [![IEC 61850](https://img.shields.io/badge/Standard-IEC%2061850-green.svg)](https://en.wikipedia.org/wiki/IEC_61850)
 
-A complete virtual substation implementation demonstrating IEC 61850 GOOSE (Generic Object Oriented Substation Event) communication between Protection IED and Breaker IED using libiec61850 library.
 A complete virtual substation implementation demonstrating IEC 61850 GOOSE (Generic Object Oriented Substation Event) communication between Protection IED and Breaker IED using libiec61850 library. The environment is intentionally self-contained so that control engineers and OT security teams can explore how GOOSE behaves, how permissions impact data sharing, and how adversarial conditions might disrupt coordination without touching production infrastructure.
 
 > ⚠️ **Disclaimer**
