@@ -16,6 +16,8 @@ fi
 INTERFACE=$1
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SUBSCRIBER_DIR="$SCRIPT_DIR/libiec61850/examples/goose_subscriber"
+GOOSE_FILE="/tmp/goose_data.txt"
+PERMISSION_GUARD_PID=""
 
 if [ "$(id -u)" -eq 0 ]; then
     SUDO=""
@@ -45,6 +47,31 @@ start_privileged_background() {
     echo $!
 }
 
+start_permission_guard() {
+    local uid gid
+    uid=$(id -u)
+    gid=$(id -g)
+
+    (
+        while true; do
+            if [ -e "$GOOSE_FILE" ]; then
+                if run_with_privileges chown "$uid:$gid" "$GOOSE_FILE" 2>/dev/null \
+                    && run_with_privileges chmod 664 "$GOOSE_FILE" 2>/dev/null; then
+                    break
+                fi
+            fi
+
+            if [ -n "${SUBSCRIBER_PID:-}" ] && ! kill -0 "$SUBSCRIBER_PID" 2>/dev/null; then
+                break
+            fi
+
+            sleep 1
+        done
+    ) &
+
+    PERMISSION_GUARD_PID=$!
+}
+
 CLEANED_UP=0
 cleanup() {
     if [ "$CLEANED_UP" -eq 1 ]; then
@@ -56,12 +83,16 @@ cleanup() {
     if [ -n "${SUBSCRIBER_PID:-}" ] && kill -0 "$SUBSCRIBER_PID" 2>/dev/null; then
         run_with_privileges kill "$SUBSCRIBER_PID" 2>/dev/null || true
     fi
+    if [ -n "${PERMISSION_GUARD_PID:-}" ] && kill -0 "$PERMISSION_GUARD_PID" 2>/dev/null; then
+        kill "$PERMISSION_GUARD_PID" 2>/dev/null || true
+        wait "$PERMISSION_GUARD_PID" 2>/dev/null || true
+    fi
     if [ -n "${GUI_PID:-}" ] && kill -0 "$GUI_PID" 2>/dev/null; then
         kill "$GUI_PID" 2>/dev/null || true
     fi
     run_with_privileges pkill -f goose_subscriber_example 2>/dev/null || true
     pkill -f breaker_gui.py 2>/dev/null || true
-    run_with_privileges rm -f /tmp/goose_data.txt 2>/dev/null || true
+    run_with_privileges rm -f "$GOOSE_FILE" 2>/dev/null || true
 }
 
 trap cleanup SIGINT SIGTERM EXIT
@@ -73,12 +104,12 @@ echo ""
 # Clean up any existing processes and files
 run_with_privileges pkill -f goose_subscriber_example 2>/dev/null || true
 pkill -f breaker_gui.py 2>/dev/null || true
-run_with_privileges rm -f /tmp/goose_data.txt 2>/dev/null || true
+run_with_privileges rm -f "$GOOSE_FILE" 2>/dev/null || true
 
 # Initialize GOOSE data file
 ORIG_UMASK=$(umask)
 umask 022
-echo "0,0,0,50,0.0,0,49.8" > /tmp/goose_data.txt
+echo "0,0,0,50,0.0,0,49.8" > "$GOOSE_FILE"
 umask "$ORIG_UMASK"
 
 # Start the GUI first
@@ -94,6 +125,7 @@ echo "GUI will display received protection data"
 echo "Press Ctrl+C to stop both GUI and subscriber"
 
 SUBSCRIBER_PID=$(start_privileged_background "$SUBSCRIBER_DIR" ./goose_subscriber_example "$INTERFACE")
+start_permission_guard
 
 # Wait for either process to finish
 wait "$SUBSCRIBER_PID"
