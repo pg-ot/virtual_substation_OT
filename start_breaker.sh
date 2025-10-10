@@ -22,11 +22,13 @@ PERMISSION_GUARD_PID=""
 # Determine privilege helper
 if [ "$(id -u)" -eq 0 ]; then
     SUDO=""
-elif command -v sudo >/dev/null 2>&1; then
-    SUDO="sudo"
 else
-    echo "This script requires root privileges. Run as root or install sudo." >&2
-    exit 1
+    if command -v sudo >/dev/null 2>&1; then
+        SUDO="sudo"
+    else
+        echo "This script requires root privileges. Run as root or install sudo." >&2
+        exit 1
+    fi
 fi
 
 run_with_privileges() {
@@ -37,12 +39,10 @@ run_with_privileges() {
     fi
 }
 
-# Start a privileged background command from a specific directory with safe umask
 start_privileged_background() {
     local dir="$1"
     shift
     if [ -n "$SUDO" ]; then
-        # Ensure files created by the privileged process are world-readable (022)
         (cd "$dir" && "$SUDO" bash -c 'umask 022; exec "$@"' bash "$@") &
     else
         (cd "$dir" && umask 022 && "$@") &
@@ -50,7 +50,6 @@ start_privileged_background() {
     echo $!
 }
 
-# Guard to fix ownership/permissions of GOOSE_FILE if a privileged process creates it
 start_permission_guard() {
     local uid gid
     uid=$(id -u)
@@ -84,6 +83,7 @@ cleanup() {
     CLEANED_UP=1
 
     printf '\nStopping Breaker IED...\n'
+
     if [ -n "${SUBSCRIBER_PID:-}" ] && kill -0 "$SUBSCRIBER_PID" 2>/dev/null; then
         run_with_privileges kill "$SUBSCRIBER_PID" 2>/dev/null || true
     fi
@@ -118,8 +118,9 @@ ORIG_UMASK=$(umask)
 umask 022
 echo "0,0,0,50,0.0,0,49.8" > "$GOOSE_FILE"
 umask "$ORIG_UMASK"
+run_with_privileges chmod 664 "$GOOSE_FILE" 2>/dev/null || true
 
-# Start the GUI first (with sudo if needed)
+# Start the GUI
 echo "Starting Breaker GUI with elevated privileges..."
 if command -v python3 >/dev/null 2>&1; then
     run_with_privileges python3 "$SCRIPT_DIR/breaker_gui.py" "$INTERFACE" &
@@ -132,19 +133,19 @@ GUI_PID=$!
 # Give GUI time to start
 sleep 1
 
-# Start the GOOSE subscriber (privileged)
+# Start the GOOSE subscriber
 echo "Starting GOOSE Subscriber..."
 echo "GUI will display received protection data"
 echo "Press Ctrl+C to stop both GUI and subscriber"
 SUBSCRIBER_PID=$(start_privileged_background "$SUBSCRIBER_DIR" ./goose_subscriber_example "$INTERFACE")
 
-# Keep the permission guard (harmless when both are root; useful if GUI runs unprivileged later)
+# Start file permission guard
 start_permission_guard
 
-# Wait for subscriber to finish (e.g., if it crashes/exits)
+# Wait for subscriber to finish
 wait "$SUBSCRIBER_PID" || true
 
-# Perform cleanup
+# Cleanup is triggered by trap
 cleanup
 
 echo "Breaker IED stopped"
