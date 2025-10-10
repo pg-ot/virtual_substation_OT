@@ -14,6 +14,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <signal.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <errno.h>
 
 static int running = 1;
 
@@ -23,9 +26,46 @@ sigint_handler(int signalId)
     running = 0;
 }
 
+static int ownershipInitialized = 0;
+static int haveTargetUid = 0;
+static uid_t targetUid;
+static int haveTargetGid = 0;
+static gid_t targetGid;
+
+static void
+initFileOwnership(void)
+{
+    if (ownershipInitialized)
+        return;
+
+    ownershipInitialized = 1;
+
+    const char* uidEnv = getenv("GOOSE_FILE_OWNER_UID");
+    if (uidEnv) {
+        char* endPtr = NULL;
+        long parsed = strtol(uidEnv, &endPtr, 10);
+        if ((endPtr != uidEnv) && (*endPtr == '\0') && (parsed >= 0)) {
+            targetUid = (uid_t) parsed;
+            haveTargetUid = 1;
+        }
+    }
+
+    const char* gidEnv = getenv("GOOSE_FILE_OWNER_GID");
+    if (gidEnv) {
+        char* endPtr = NULL;
+        long parsed = strtol(gidEnv, &endPtr, 10);
+        if ((endPtr != gidEnv) && (*endPtr == '\0') && (parsed >= 0)) {
+            targetGid = (gid_t) parsed;
+            haveTargetGid = 1;
+        }
+    }
+}
+
 static void
 gooseListener(GooseSubscriber subscriber, void* parameter)
 {
+    initFileOwnership();
+
     // Clear screen and move cursor to top
     printf("\033[2J\033[H");
     
@@ -72,12 +112,30 @@ gooseListener(GooseSubscriber subscriber, void* parameter)
         }
         
         // Write data to shared file for GUI
-        FILE *f = fopen("/tmp/goose_data.txt", "w");
+        const char* gooseFile = "/tmp/goose_data.txt";
+        FILE *f = fopen(gooseFile, "w");
         if (f) {
-            fprintf(f, "%d,%d,%d,%d,%.1f,%.0f,%.1f", 
-                   tripCommand ? 1 : 0, closeCommand ? 1 : 0, 
+            fprintf(f, "%d,%d,%d,%d,%.1f,%.0f,%.1f",
+                   tripCommand ? 1 : 0, closeCommand ? 1 : 0,
                    faultType, protElement, faultCurrent, faultVoltage, frequency);
             fclose(f);
+
+            /* Ensure the GUI (running unprivileged) can read updates written by the
+             * privileged subscriber even when sudo applies a restrictive umask. */
+            if (chmod(gooseFile, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH) != 0) {
+                perror("chmod /tmp/goose_data.txt");
+            }
+
+            if (haveTargetUid || haveTargetGid) {
+                uid_t uid = haveTargetUid ? targetUid : (uid_t) -1;
+                gid_t gid = haveTargetGid ? targetGid : (gid_t) -1;
+
+                if (chown(gooseFile, uid, gid) != 0) {
+                    if (errno != EPERM) {
+                        perror("chown /tmp/goose_data.txt");
+                    }
+                }
+            }
         }
     }
     
