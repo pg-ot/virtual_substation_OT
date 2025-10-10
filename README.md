@@ -4,7 +4,11 @@
 [![Platform](https://img.shields.io/badge/Platform-Linux-blue.svg)](https://www.linux.org/)
 [![IEC 61850](https://img.shields.io/badge/Standard-IEC%2061850-green.svg)](https://en.wikipedia.org/wiki/IEC_61850)
 
-A complete virtual substation implementation demonstrating IEC 61850 GOOSE (Generic Object Oriented Substation Event) communication between Protection IED and Breaker IED using libiec61850 library.
+A complete virtual substation implementation demonstrating IEC 61850 GOOSE (Generic Object Oriented Substation Event) communication between Protection IED and Breaker IED using libiec61850 library. The environment is intentionally self-contained so that control engineers and OT security teams can explore how GOOSE behaves, how permissions impact data sharing, and how adversarial conditions might disrupt coordination without touching production infrastructure.
+
+> ⚠️ **Disclaimer**
+>
+> This repository is intended for educational experimentation only. The included publisher and subscriber do **not** produce or consume IEC 61850-compliant GOOSE datasets, the configuration revision embedded in the messages diverges from the provided SCL model, and the default heartbeat interval conflicts with the advertised `TimeAllowedToLive`. Do not rely on this code for standards-compliant interoperability or any safety-critical application without substantial rework of the data model and implementation.
 
 ## 🚀 Quick Start
 
@@ -25,10 +29,10 @@ sudo ./start_breaker.sh eth0
 
 ## Project Overview
 
-This project simulates a real substation protection system where:
+This project simulates a simplified substation protection system where:
 - **Protection IED** detects faults and sends trip/close commands via GOOSE messages
 - **Breaker IED** receives commands and operates the circuit breaker accordingly
-- Communication follows IEC 61850-8-1 standard with proper timing sequences
+- Communication mimics IEC 61850-8-1 messaging for demonstration purposes only, but the setup is also suited to OT security exercises such as practicing traffic capture/analysis, evaluating least-privilege boundaries, and rehearsing incident response playbooks for misbehaving IEDs.
 
 ## System Architecture
 
@@ -127,19 +131,26 @@ ip link show  # List all interfaces
 - **Measurements:** Live display of current, voltage, and frequency
 - **Connection Status:** Timestamp of last received message
 
-## IEC 61850 Compliance
+## IEC 61850 Compliance Notes
 
-### GOOSE Timing (IEC 61850-8-1)
-- **Fast Retransmission:** 4ms intervals for first 3 messages after state change
-- **Stabilization:** 100ms intervals for next few messages
-- **Heartbeat:** 1000ms intervals during normal operation
-- **Time to Live:** 500ms for message validity
+Although the project draws on libiec61850 and exchanges GOOSE frames, several aspects intentionally diverge from the IEC 61850-8-1 standard and the provided SCL configuration:
 
-### Network Configuration
-- **Application ID:** 1000 (Protection)
-- **Destination MAC:** 01:0c:cd:01:00:01 (GOOSE multicast)
-- **VLAN Priority:** 4 (High priority for protection)
-- **VLAN ID:** 0 (Untagged)
+- **Dataset structure mismatch:** The publisher encodes a seven-element mix of boolean, integer, and float values, whereas the SCL `AnalogValues` dataset models four `MV` measurements that include magnitude, quality, and timestamp members. Standards-compliant subscribers will therefore reject these messages.
+- **Configuration revision inconsistency:** The hard-coded `GoCBRef` advertises `ConfRev=1`, but the SCL model defines `confRev="2"`, causing compliant clients to treat the traffic as stale.
+- **Heartbeat timing conflict:** The idle retransmission interval is 1000 ms even though `TimeAllowedToLive` is set to 500 ms, so conforming subscribers will flag the messages as expired mid-cycle.
+
+Any deployment that requires interoperability with other IEC 61850 equipment must reconcile these discrepancies (for example by updating the SCL model, adjusting the publisher/subscriber payloads, and aligning retransmission timing) before attempting integration.
+
+## OT Security Use Cases
+
+While the data model is simplified, the project offers a convenient sandbox for cyber-physical security research and training:
+
+- **Traffic analysis practice:** Capture and dissect GOOSE frames to understand how control signals appear on the wire, how configuration revisions manifest, and where deviations from the SCL model surface.
+- **Privilege and file-permission drills:** Explore the interplay between privileged publisher/subscriber binaries and unprivileged GUIs, including how umask, ownership, and background guards keep shared telemetry accessible.
+- **Attack simulation:** Experiment with intentionally malformed datasets, delayed heartbeats, or tampered shared files to observe how the system reacts and to craft defensive monitoring rules.
+- **Incident response tabletop exercises:** Use the GUIs and launcher scripts to rehearse detection and recovery procedures that map to OT playbooks without risking real equipment.
+
+These OT-focused activities complement the electrical engineering perspective, making the repository useful for blue-team training, security research, and demonstrations of how process control software can fail under adversarial conditions.
 
 ## Network Interfaces
 
@@ -216,3 +227,13 @@ This project demonstrates:
 - **Development:** Prototype new protection algorithms
 - **Education:** Understand power system protection principles
 - **Research:** Experiment with GOOSE message structures and timing
+
+## Resolving Merge Conflicts
+
+Because this repository customizes both the launcher scripts and the bundled `libiec61850` examples, upstream updates to those same files often collide with local changes. When you pull new commits and Git reports conflicts:
+
+1. **Review the overlapping edits.** Most conflicts appear in `start_breaker.sh`, `start_protection.sh`, or `libiec61850/examples/goose_subscriber/goose_subscriber_example.c`, so open each file and decide which logic should remain.
+2. **Stage the reconciled file.** After editing the conflict markers out of a file, run `git add <file>` to mark it as resolved.
+3. **Continue the merge or rebase.** Finish with `git merge --continue` or `git rebase --continue`, then run your usual tests.
+
+If the conflicts stem from recurring local customizations, consider isolating your changes in separate scripts or patches so they can be re-applied with `git rebase --rebase-merges` or tooling like `git rerere` the next time you update from upstream.
