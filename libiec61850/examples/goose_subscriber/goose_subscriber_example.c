@@ -15,8 +15,13 @@
 #include <stdio.h>
 #include <signal.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <string.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 static int running = 1;
 
@@ -59,6 +64,82 @@ initFileOwnership(void)
             targetGid = (gid_t) parsed;
             haveTargetGid = 1;
         }
+    }
+}
+
+static void
+writeSharedDataset(bool tripCommand,
+                   bool closeCommand,
+                   int32_t faultType,
+                   int32_t protElement,
+                   float faultCurrent,
+                   float faultVoltage,
+                   float frequency)
+{
+    char buffer[128];
+    int written = snprintf(buffer, sizeof(buffer),
+                           "%d,%d,%d,%d,%.1f,%.0f,%.1f",
+                           tripCommand ? 1 : 0,
+                           closeCommand ? 1 : 0,
+                           faultType,
+                           protElement,
+                           faultCurrent,
+                           faultVoltage,
+                           frequency);
+
+    if (written < 0) {
+        perror("snprintf goose dataset");
+        return;
+    }
+
+    size_t bufferLen = strnlen(buffer, sizeof(buffer));
+
+    char tempTemplate[] = "/tmp/goose_data.txt.XXXXXX";
+    int fd = mkstemp(tempTemplate);
+
+    if (fd < 0) {
+        perror("mkstemp goose_data");
+        return;
+    }
+
+    if (fchmod(fd, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH) != 0)
+        perror("fchmod goose_data temp");
+
+    if (haveTargetUid || haveTargetGid) {
+        uid_t uid = haveTargetUid ? targetUid : (uid_t) -1;
+        gid_t gid = haveTargetGid ? targetGid : (gid_t) -1;
+
+        if (fchown(fd, uid, gid) != 0)
+            perror("fchown goose_data temp");
+    }
+
+    ssize_t toWrite = (ssize_t) bufferLen;
+    ssize_t totalWritten = 0;
+
+    while (totalWritten < toWrite) {
+        ssize_t chunk = write(fd, buffer + totalWritten, (size_t)(toWrite - totalWritten));
+        if (chunk < 0) {
+            if (errno == EINTR)
+                continue;
+
+            perror("write goose_data temp");
+            close(fd);
+            unlink(tempTemplate);
+            return;
+        }
+
+        totalWritten += chunk;
+    }
+
+    if (fsync(fd) != 0)
+        perror("fsync goose_data temp");
+
+    if (close(fd) != 0)
+        perror("close goose_data temp");
+
+    if (rename(tempTemplate, "/tmp/goose_data.txt") != 0) {
+        perror("rename goose_data temp");
+        unlink(tempTemplate);
     }
 }
 
@@ -113,32 +194,13 @@ gooseListener(GooseSubscriber subscriber, void* parameter)
             printf("\033[32m>>> BREAKER CLOSE COMMAND ACTIVE <<<\033[0m\n");
         }
 
-        // Write data to shared file for GUI
-        const char* gooseFile = "/tmp/goose_data.txt";
-        FILE *f = fopen(gooseFile, "w");
-        if (f) {
-            fprintf(f, "%d,%d,%d,%d,%.1f,%.0f,%.1f",
-                    tripCommand ? 1 : 0, closeCommand ? 1 : 0,
-                    faultType, protElement, faultCurrent, faultVoltage, frequency);
-            fclose(f);
-
-            /* Ensure the GUI (running unprivileged) can read updates written by the
-             * privileged subscriber even when sudo applies a restrictive umask. */
-            if (chmod(gooseFile, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH) != 0) {
-                perror("chmod /tmp/goose_data.txt");
-            }
-
-            if (haveTargetUid || haveTargetGid) {
-                uid_t uid = haveTargetUid ? targetUid : (uid_t) -1;
-                gid_t gid = haveTargetGid ? targetGid : (gid_t) -1;
-
-                if (chown(gooseFile, uid, gid) != 0) {
-                    if (errno != EPERM) {
-                        perror("chown /tmp/goose_data.txt");
-                    }
-                }
-            }
-        }
+        writeSharedDataset(tripCommand,
+                           closeCommand,
+                           faultType,
+                           protElement,
+                           faultCurrent,
+                           faultVoltage,
+                           frequency);
     }
 
     printf("\nPress Ctrl+C to stop...\n");
