@@ -21,7 +21,7 @@ cd virtual-substation
 sudo ./start_protection.sh eth0
 
 # Terminal 2 - Breaker IED  
-sudo ./start_breaker.sh eth0
+sudo ./start_breaker.sh eth1
 
 # Stop all
 ./stop_all.sh
