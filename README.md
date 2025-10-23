@@ -13,7 +13,7 @@ A complete virtual substation implementation demonstrating IEC 61850 GOOSE (Gene
 ## 🚀 Quick Start
 
 ```bash
-git clone https://github.com/yourusername/virtual-substation.git
+git clone https://github.com/pg-ot/virtual-substation.git
 cd virtual-substation
 ./install.sh
 
