@@ -139,7 +139,7 @@ cd virtual-substation
 | Permission denied | Run with `sudo` |
 | Interface not found | Check `ip link show` and use correct interface |
 | GUI compilation error | Ensure libiec61850 is built: `cd libiec61850 && make lib` |
-| No GOOSE communication | Verify both devices use same network interface |
+| No GOOSE communication | Verify both devices use same network |
 | Python GUI not starting | Install tkinter: `sudo apt install python3-tk` |
 
 ## Educational Context
