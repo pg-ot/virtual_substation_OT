@@ -1,0 +1,2 @@
+# Compatibility override. Layer 2 GOOSE is enabled by the base Compose configuration.
+services: {}

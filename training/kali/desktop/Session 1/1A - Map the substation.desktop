@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=1A - Map the substation
+Exec=/bin/bash /opt/ss01/practicals/activity.sh 1A
+Terminal=true
+Icon=utilities-terminal

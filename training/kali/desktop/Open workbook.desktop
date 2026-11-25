@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Open practical workbook
+Exec=firefox file:///opt/ss01/workbook.html
+Terminal=false
+Icon=firefox

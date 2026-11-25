@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SS-01 · Component</title>
+<link rel="stylesheet" href="/station.css">
+<link rel="stylesheet" href="/industrial.css">
+<script type="module" src="/components.mjs"></script>
+</head>
+<body data-component="__COMPONENT_ID__">
+<header><strong id="device-name"></strong><span id="device-role"></span><!-- PLANT_YARD_LINK --><span class="training" id="device-interface"></span></header>
+<main>
+<div class="component-layout" id="component-layout">
+  <section aria-labelledby="faceplate-title" id="generic-device">
+    <h2 id="faceplate-title"></h2>
+    <div id="faceplate" class="device-faceplate">
+      <output id="faceplate-value">UNKNOWN</output>
+      <span id="faceplate-quality">UNKNOWN</span>
+    </div>
+    <table aria-label="Component status"><tbody>
+      <tr><th scope="row">Native service</th><td id="device-status">STARTING</td></tr>
+      <tr><th scope="row">Data link</th><td id="device-link">WAITING</td></tr>
+    </tbody></table>
+  </section>
+  <section id="ied-panel" class="ied-panel" aria-labelledby="ied-tag" hidden>
+    <div class="ied-metal">
+      <div class="ied-nameplate"><div><span>SS-01 / F01</span><h1 id="ied-tag"></h1></div><span id="ied-function"></span></div>
+      <div class="ied-body">
+        <div class="ied-display" role="region" aria-label="Device display">
+          <div class="lcd-bar"><span id="ied-screen-title">OVERVIEW</span><span>F01</span></div>
+          <div id="ied-screen"></div>
+        </div>
+        <div class="ied-annunciator" aria-label="Indicators" id="ied-indicators"></div>
+      </div>
+      <div class="ied-keypad" aria-label="Device display navigation">
+        <button type="button" data-ied-view="overview" aria-pressed="true">Home</button>
+        <button type="button" data-ied-view="signals" aria-pressed="false">Indications</button>
+        <button type="button" data-ied-view="events" aria-pressed="false">Events</button>
+      </div>
+      <div class="ied-bottom"><span id="ied-port"></span><span>LOCAL DISPLAY</span></div>
+    </div>
+  </section>
+  <section aria-labelledby="signals-title" id="component-signals">
+    <h2 id="signals-title">Indications</h2>
+    <div class="device-scroll"><table aria-labelledby="signals-title">
+      <thead><tr><th scope="col">Point</th><th scope="col">Indication</th><th scope="col">Quality</th><th scope="col">Flags</th><th scope="col">Source (UTC)</th><th scope="col">Observed (UTC)</th></tr></thead>
+      <tbody id="points"></tbody>
+    </table></div>
+  </section>
+</div>
+<!-- PLANT_SCENARIO_CONTROLS -->
+<section class="events" id="component-events" aria-labelledby="events-title">
+  <h2 id="events-title">Native device activity</h2>
+  <div class="event-scroll"><table aria-labelledby="events-title">
+    <thead><tr><th scope="col">Observed (UTC)</th><th scope="col">Event</th></tr></thead>
+    <tbody id="events"></tbody>
+  </table></div>
+</section>
+</main>
+<footer><span>SS-01 / FEEDER F01</span></footer>
+</body>
+</html>

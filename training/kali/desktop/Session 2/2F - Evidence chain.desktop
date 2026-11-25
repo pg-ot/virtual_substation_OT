@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=2F - Evidence chain
+Exec=/bin/bash /opt/ss01/practicals/activity.sh 2F
+Terminal=true
+Icon=utilities-terminal

@@ -1,0 +1,13 @@
+# Opt-in exercise: use only with a dedicated disposable project.
+services:
+  control-centre:
+    command: [node, /training/recovery-master.mjs]
+    volumes:
+      - type: bind
+        source: ${LAB_RECOVERY_DIR:?Set LAB_RECOVERY_DIR to the prepared exercise directory}
+        target: /training-config
+        read_only: true
+      - type: bind
+        source: ./containers/recovery
+        target: /training
+        read_only: true

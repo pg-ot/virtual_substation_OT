@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=1B - Zones and conduits
+Exec=/bin/bash /opt/ss01/practicals/activity.sh 1B
+Terminal=true
+Icon=utilities-terminal

@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=4E - 3-2-1 backup
+Exec=/bin/bash /opt/ss01/practicals/activity.sh 4E
+Terminal=true
+Icon=utilities-terminal

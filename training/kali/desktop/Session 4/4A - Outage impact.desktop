@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=4A - Outage impact
+Exec=/bin/bash /opt/ss01/practicals/activity.sh 4A
+Terminal=true
+Icon=utilities-terminal

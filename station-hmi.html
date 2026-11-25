@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SS-01 · Substation Lab</title>
+<style>
+* { box-sizing: border-box; }
+:root { font: 14px "Segoe UI", sans-serif; color: #20262b; background: #c7cdd0; }
+body { margin: 0; }
+header, footer { display: flex; align-items: center; gap: 18px; padding: 9px 16px; background: #26343d; color: #f2f5f6; }
+header strong { letter-spacing: .09em; }
+header span, footer { font-size: 12px; }
+.training { margin-left: auto; color: #ffd493; }
+main { padding: 10px; max-width: 1440px; margin: auto; }
+.workspace { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 8px; }
+section { border: 1px solid #7c888e; background: #e1e5e6; min-width: 0; }
+h2 { margin: 0; padding: 5px 9px; background: #485963; color: white; font-size: 13px; font-weight: 600; }
+.drawing { background: #d8dddf; }
+.lab-nav { display: flex; flex-wrap: wrap; background: #36464f; padding: 0 10px; gap: 1px; }
+.lab-nav a { color: #f1f5f6; padding: 8px 12px; text-decoration: none; border-bottom: 2px solid transparent; }
+.lab-nav a:hover, .lab-nav a:focus-visible { background: #4b5b64; }
+.lab-nav a[aria-current="page"] { background: #e1e5e6; border-color: #526773; color: #20262b; }
+[hidden] { display: none !important; }
+.device-screen { max-width: 540px; }
+.yard canvas { max-width: 940px; margin: auto; }
+.yard button[aria-pressed="true"] { background: #485963; color: white; }
+canvas { display: block; width: 100%; height: auto; }
+table { width: 100%; border-collapse: collapse; font: 12px Consolas, monospace; }
+th, td { padding: 5px 8px; border-bottom: 1px solid #aab4b8; text-align: left; }
+thead th { background: #b9c4c9; }
+tbody tr:nth-child(even) { background: #d7dfe2; }
+.relay { margin: 8px; border: 1px solid #111a20; padding: 10px; background: #30393f; color: #edf1f2; }
+.relay-tag, .lamps { display: flex; justify-content: space-between; gap: 12px; font: 12px Consolas, monospace; }
+.relay-tag span { color: #c5cfd3; }
+.lamps { margin: 12px 0 8px; }
+.lamp { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #5b6468; border: 1px solid #121719; }
+.lamp.ready { background: #6ab979; }
+.lamp.tripped { background: #ff645d; }
+.lcd { margin: 0; padding: 9px; display: grid; grid-template-columns: 1fr auto; gap: 3px 16px; background: #c8d3ac; color: #212819; font: 13px Consolas, monospace; border: 2px inset #9ca88d; }
+dd { margin: 0; text-align: right; }
+.keys { display: flex; flex-wrap: wrap; gap: 6px; padding: 7px; }
+.relay .keys { padding: 9px 0 0; }
+button { font: inherit; font-size: 12px; padding: 5px 9px; border: 1px solid #677781; border-radius: 0; background: #edf0f1; color: #20262b; cursor: pointer; }
+button:hover:enabled { background: #d3e2eb; }
+button:focus-visible { outline: 2px solid #356ca2; outline-offset: 2px; }
+button:disabled { color: #566166; background: #c3c9cc; cursor: default; }
+.stale { color: #754500; font-weight: bold; background: #f3d99d; }
+#points th { overflow-wrap: anywhere; }
+#points small { display: block; font-size: inherit; font-weight: normal; }
+#points .trip-alarm { color: #7a241d; background: #f3d0c7; }
+.events, .instructor { margin-top: 8px; }
+.event-scroll { max-height: 156px; min-height: 76px; overflow: auto; }
+.event-scroll thead { position: sticky; top: 0; }
+footer { min-height: 36px; flex-wrap: wrap; }
+dialog { padding: 0; border: 1px solid #26343d; background: #e1e5e6; color: #20262b; min-width: min(320px, 90vw); }
+dialog p { margin: 12px; }
+dialog::backdrop { background: #18202688; }
+@media (max-width: 680px) { .workspace { grid-template-columns: 1fr; } header { flex-wrap: wrap; gap: 5px 12px; } }
+
+</style>
+
+</head>
+<body>
+<header><strong>SUBSTATION LAB</strong><span>SS-01 / 11 kV / FEEDER F01</span><span class="training">LOCAL SIMULATION</span></header>
+<nav class="lab-nav" aria-label="Lab views">
+  <a href="#station" aria-current="page">Station HMI</a>
+  <a href="#yard">Switchyard</a>
+  <a href="#ied">Feeder IED</a>
+  <a href="#gateway">Gateway</a>
+  <a href="#control-centre">Control centre</a>
+  <a href="#instructor">Instructor</a>
+</nav>
+<main>
+<div class="workspace" data-screen="station">
+  <section aria-labelledby="diagram-title">
+    <h2 id="diagram-title">Station single-line</h2>
+    <div class="drawing">
+      <canvas id="sld" width="630" height="310" aria-label="11 kV bus connected through breaker 52-F01 and a current transformer to feeder F01"></canvas>
+    </div>
+    <table aria-label="Station signals"><thead><tr><th>Point</th><th>Indication</th><th>Quality</th></tr></thead>
+    <tbody><tr><td>52-F01 position</td><td id="local-position"></td><td>LIVE</td></tr>
+    <tr><td>Feeder current</td><td id="local-current"></td><td>LIVE</td></tr></tbody></table>
+  </section>
+  <section aria-labelledby="relay-title">
+    <h2 id="relay-title">Bay controls</h2>
+    <table aria-label="Station control status"><tbody>
+      <tr><th scope="row">Control authority</th><td id="station-authority"></td></tr>
+      <tr><th scope="row">Trip latch</th><td id="station-trip"></td></tr>
+    </tbody></table>
+    <div class="keys"><button data-origin="local" data-action="open">OPEN</button><button data-origin="local" data-action="close">CLOSE</button></div>
+  </section>
+</div>
+<section class="yard" data-screen="yard" hidden>
+  <h2>Switchyard</h2>
+  <div class="keys" aria-label="Switchyard viewpoints">
+    <button data-view="overview" aria-pressed="true">Overview</button>
+    <button data-view="breaker" aria-pressed="false">Breaker 52-F01</button>
+    <button data-view="relay" aria-pressed="false">Relay cabinet</button>
+  </div>
+  <canvas id="yard" width="780" height="340"></canvas>
+</section>
+<section class="device-screen" data-screen="ied" hidden>
+    <h2>Protection IED</h2>
+    <h2 id="relay-title">Feeder protection IED</h2>
+    <div class="relay">
+      <div class="relay-tag">PR-F01 <span>FEEDER RELAY</span></div>
+      <div class="lamps"><span><i class="lamp ready"></i> READY</span><span><i class="lamp" id="trip-lamp"></i> TRIP</span></div>
+      <dl class="lcd"><dt>52-F01</dt><dd id="relay-position"></dd><dt>AUTHORITY</dt><dd id="authority"></dd><dt>TRIP LATCH</dt><dd id="trip-text"></dd></dl>
+      <div class="keys"><button data-origin="local" data-action="open">OPEN</button><button data-origin="local" data-action="close">CLOSE</button><button data-origin="local" data-action="reset">RESET TRIP</button></div>
+    </div>
+</section>
+<section data-screen="gateway" hidden>
+  <h2>Station gateway · GW-01</h2>
+  <table aria-label="Gateway diagnostics"><tbody>
+    <tr><th scope="row">Supervisory link</th><td id="gateway-link"></td></tr>
+    <tr><th scope="row">Forwarded sample quality</th><td id="gateway-quality"></td></tr>
+    <tr><th scope="row">Last forwarded source time</th><td id="gateway-time"></td></tr>
+  </tbody></table>
+  <h2>Forwarded points</h2>
+  <table aria-label="Simulated point map"><thead><tr><th scope="col">Source point</th><th scope="col">Supervisory indication</th><th scope="col">Last forwarded value</th></tr></thead>
+  <tbody>
+    <tr><td>PR-F01 / 52-F01 position</td><td>Breaker position</td><td id="gateway-position"></td></tr>
+    <tr><td>PR-F01 / feeder current</td><td>Feeder current</td><td id="gateway-current"></td></tr>
+    <tr><td>PR-F01 / protection trip</td><td>Trip latch</td><td id="gateway-trip"></td></tr>
+  </tbody></table>
+</section>
+<section data-screen="control-centre" hidden>
+    <h2>Control centre · SS-01</h2>
+    <table aria-label="Supervisory snapshot"><tbody>
+      <tr><th scope="row">Position</th><td id="remote-position"></td></tr>
+      <tr><th scope="row">Feeder current</th><td id="remote-current"></td></tr>
+      <tr><th scope="row">Trip latch</th><td id="remote-trip"></td></tr>
+      <tr><th scope="row">Quality</th><td id="quality"></td></tr>
+      <tr><th scope="row">Source time (sim.)</th><td id="sample-time"></td></tr>
+    </tbody></table>
+    <div class="keys remote"><button data-origin="remote" data-action="open">OPEN</button><button data-origin="remote" data-action="close">CLOSE</button></div>
+</section>
+<section class="instructor" data-screen="instructor" hidden>
+  <h2>Instructor controls</h2>
+  <div class="keys"><button id="fault">Apply fault</button><button id="link">Drop WAN</button><button id="mode">Select remote</button><button id="reset">Reset exercise</button></div>
+</section>
+<section class="events" aria-labelledby="events-title">
+  <h2 id="events-title">Sequence of events</h2>
+  <div class="event-scroll"><table><thead><tr><th>Sim. time</th><th>Source</th><th>Event</th><th>Result</th></tr></thead><tbody id="events"></tbody></table></div>
+</section>
+</main>
+<footer><span>SS-01</span><span id="wan-status"></span><span id="operation" role="status"></span></footer>
+<dialog id="confirm"><form method="dialog"><h2>Confirm operation</h2><p id="confirm-text"></p><div class="keys"><button value="cancel" autofocus>Cancel</button><button value="accept">Execute</button></div></form></dialog>
+<script>
+class Feeder {
+  #closed = true;
+  #fault = false;
+
+  setFault(active) {
+    this.#fault = active;
+  }
+
+  operate(closed) {
+    this.#closed = closed;
+  }
+
+  read() {
+    return {
+      position: this.#closed ? 'CLOSED' : 'OPEN',
+      busVoltageKv: 11,
+      feederCurrentA: this.#closed ? (this.#fault ? 600 : 120) : 0,
+      fault: this.#fault,
+    };
+  }
+}
+
+class Gateway {
+  #available = true;
+  #quality = 'UNKNOWN';
+  #sample = null;
+
+  constructor(ied) {
+    this.ied = ied;
+  }
+
+  setLink(available) {
+    this.#available = available;
+    if (!available && this.#sample) this.#quality = 'STALE';
+  }
+
+  sample(timeMs) {
+    if (!this.#available) return;
+    this.#sample = { ...this.ied.read(), timeMs };
+    this.#quality = 'LIVE';
+  }
+
+  read() {
+    return { quality: this.#quality, sample: this.#sample && { ...this.#sample } };
+  }
+
+  diagnostics() {
+    return { available: this.#available, ...this.read() };
+  }
+
+  command(action) {
+    if (!this.#available || this.#quality !== 'LIVE') {
+      return { accepted: false, reason: 'Supervision requires a fresh station sample' };
+    }
+    return this.ied.command('REMOTE', action);
+  }
+}
+
+class Ied {
+  #tripLatched = false;
+  #mode = 'LOCAL';
+
+  constructor(feeder) {
+    this.feeder = feeder;
+  }
+
+  setMode(mode) {
+    if (mode !== 'LOCAL' && mode !== 'REMOTE') throw new RangeError('Invalid control mode');
+    this.#mode = mode;
+  }
+
+  evaluateProtection() {
+    const { fault, position } = this.feeder.read();
+    if (fault && position === 'CLOSED') {
+      this.#tripLatched = true;
+      this.feeder.operate(false);
+    }
+  }
+
+  read() {
+    return { ...this.feeder.read(), tripLatched: this.#tripLatched, mode: this.#mode };
+  }
+
+  command(origin, action) {
+    if (origin !== this.#mode) return { accepted: false, reason: 'Control mode mismatch' };
+    const { fault } = this.feeder.read();
+    if (action === 'reset') {
+      if (origin !== 'LOCAL' || fault) {
+        return { accepted: false, reason: 'Reset requires local control and a cleared fault' };
+      }
+      this.#tripLatched = false;
+    } else if (action === 'open' || action === 'close') {
+      if (action === 'close' && (fault || this.#tripLatched)) {
+        return { accepted: false, reason: 'Close blocked by protection' };
+      }
+      this.feeder.operate(action === 'close');
+    } else {
+      return { accepted: false, reason: 'Unknown command' };
+    }
+    return { accepted: true };
+  }
+}
+
+
+function createClassroom() {
+  const feeder = new Feeder();
+  const ied = new Ied(feeder);
+  const gateway = new Gateway(ied);
+  let timeMs = 0;
+  gateway.sample(timeMs);
+
+  return {
+    time: () => timeMs,
+    station: () => ied.read(),
+    supervisory: () => gateway.read(),
+    gatewayDiagnostics: () => gateway.diagnostics(),
+    local: (action) => ied.command('LOCAL', action),
+    remote: (action) => gateway.command(action),
+    setLink: (available) => gateway.setLink(available),
+    setMode: (mode) => ied.setMode(mode),
+    setFault(active) {
+      feeder.setFault(active);
+      ied.evaluateProtection();
+    },
+    step() {
+      timeMs += 100;
+      gateway.sample(timeMs);
+    },
+  };
+}
+
+const views = {
+  overview: { eye: [11, 9, 13], target: [0, 0, 0], zoom: 570 },
+  breaker: { eye: [3.5, 1.65, 4.7], target: [-0.8, 1, 0], zoom: 560 },
+  relay: { eye: [3.5, 1.65, 4], target: [2.55, 1.1, 1.5], zoom: 520 },
+};
+
+const subtract = (a, b) => a.map((value, i) => value - b[i]);
+const dot = (a, b) => a.reduce((sum, value, i) => sum + value * b[i], 0);
+const cross = ([x, y, z], [a, b, c]) => [y*c-z*b, z*a-x*c, x*b-y*a];
+const unit = a => a.map(value => value / Math.hypot(...a));
+
+function drawYard(canvas, station, view) {
+  const ctx = canvas.getContext('2d');
+  const { width, height } = canvas;
+  const { eye, target, zoom } = views[view];
+  const forward = unit(subtract(target, eye));
+  const right = unit(cross(forward, [0, 1, 0]));
+  const up = cross(right, forward);
+  const faces = [];
+
+  function project(point) {
+    const relative = subtract(point, eye);
+    const depth = dot(relative, forward);
+    return [width/2 + zoom*dot(relative, right)/depth,
+      height/2 - zoom*dot(relative, up)/depth];
+  }
+
+  function box(x, y, z, w, h, d, colors) {
+    const a = [x,y,z], b = [x+w,y,z], c = [x+w,y,z+d], e = [x,y,z+d];
+    const top = ([px, , pz]) => [px,y+h,pz];
+    const panels = [
+      [e,c,top(c),top(e)], [b,c,top(c),top(b)], [a,b,top(b),top(a)],
+      [a,e,top(e),top(a)], [top(a),top(b),top(c),top(e)],
+    ];
+    panels.forEach((points, index) => {
+      if (points.some(point => dot(subtract(point, eye), forward) < .1)) return;
+      const depth = points.reduce((sum, p) => sum + dot(subtract(p, eye), forward), 0) / 4;
+      faces.push({ points, depth, color: colors[index % colors.length] });
+    });
+  }
+
+  const steel = ['#63757d', '#4c5f68', '#85969c'];
+  const ceramic = ['#836e58', '#6a5544', '#a58c70'];
+  const cabinet = ['#829098', '#616f76', '#a6b0b3'];
+  ctx.fillStyle = '#aebbc1';
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = '#7e8984';
+  ctx.fillRect(0, height * .58, width, height * .42);
+  box(-4.2, -.14, -3.4, 8.4, .14, 6.4, ['#a2a7a0']);
+  for (const x of [-3.2, 2.9]) {
+    box(x, 0, -2.48, .17, 2.9, .17, steel);
+  }
+  box(-3.2, 2.72, -2.41, 6.3, .1, .12, steel);
+  box(-.85, 2.7, -2.4, .07, .07, 4.35, steel);
+  box(-1.5, 0, -.7, 1.28, .16, 1.4, ['#c4c7be']);
+  box(-1.38, .16, -.35, 1.03, .85, .72, steel);
+  for (const z of [-.36, .14]) box(-1.03, 1.01, z, .32, .94, .24, ceramic);
+  box(-1.08, .53, .372, .52, .25, .04, ['#242e33']);
+  box(2.02, 0, 1.15, 1.05, 1.78, .52, cabinet);
+  box(2.18, .88, 1.67, .72, .62, .02, ['#273238']);
+
+  for (const { points, color } of faces.sort((a, b) => b.depth - a.depth)) {
+    ctx.beginPath();
+    points.forEach((point, index) => {
+      const [x, y] = project(point);
+      if (index === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  function label(point, text, color) {
+    const [x, y] = project(point);
+    ctx.font = 'bold 15px Consolas, monospace';
+    ctx.fillStyle = '#233039';
+    ctx.fillRect(x - 5, y - 16, ctx.measureText(text).width + 10, 22);
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, y);
+  }
+
+  if (view === 'overview') label([-3, 2.95, -2.4], '11 kV BUS', '#fff');
+  if (view !== 'relay') label([-.9, .73, .45], '52-F01 ' + station.position, '#fff');
+  if (view !== 'breaker') {
+    label([2.25, 1.4, 1.7], station.tripLatched ? '● TRIP' : '● READY',
+      station.tripLatched ? '#ff857d' : '#a6e1ac');
+  }
+}
+
+function drawSingleLine(drawing, { position, busVoltageKv, feederCurrentA }) {
+  const closed = position === 'CLOSED';
+  const unknown = position !== 'CLOSED' && position !== 'OPEN';
+  const live = '#294653';
+  const unavailable = '#80520d';
+  drawing.clearRect(0, 0, 630, 310);
+  drawing.strokeStyle = '#c2cbcf';
+  drawing.lineWidth = 1;
+  for (let x = 18; x < 630; x += 18) {
+    for (let y = 18; y < 310; y += 18) drawing.strokeRect(x, y, 0.5, 0.5);
+  }
+  drawing.fillStyle = live;
+  drawing.font = '16px Consolas, monospace';
+  drawing.fillText(busVoltageKv ? busVoltageKv + ' kV BUS' : '11 kV BUS (NOMINAL)', 83, 59);
+  drawing.fillStyle = unknown ? unavailable : live;
+  drawing.fillText('52-F01  ' + (position ?? 'UNKNOWN'), 320, 148);
+  drawing.fillStyle = live;
+  drawing.fillText('CT   ' + (feederCurrentA == null ? '—' : feederCurrentA + ' A'), 320, 207);
+  drawing.fillText('FEEDER F01', 320, 275);
+  drawing.strokeStyle = live;
+  drawing.lineWidth = 3;
+  drawing.beginPath();
+  drawing.moveTo(83, 77);
+  drawing.lineTo(543, 77);
+  drawing.moveTo(270, 77);
+  drawing.lineTo(270, 126);
+  drawing.stroke();
+  if (closed) drawing.fillRect(259, 126, 22, 30);
+  if (unknown) {
+    drawing.strokeStyle = unavailable;
+    drawing.fillStyle = unavailable;
+    drawing.fillText('?', 265, 146);
+  }
+  drawing.strokeRect(259, 126, 22, 30);
+  drawing.strokeStyle = closed ? live : unknown ? unavailable : '#75838a';
+  if (unknown) drawing.setLineDash([5, 5]);
+  drawing.beginPath();
+  drawing.moveTo(270, 156);
+  drawing.lineTo(270, 274);
+  drawing.lineTo(262, 262);
+  drawing.moveTo(270, 274);
+  drawing.lineTo(278, 262);
+  drawing.stroke();
+  if (unknown) drawing.setLineDash([]);
+  drawing.beginPath();
+  drawing.arc(270, 202, 12, 0, 2 * Math.PI);
+  drawing.stroke();
+}
+
+
+const byId = id => document.getElementById(id);
+const set = (id, value) => { byId(id).textContent = value; };
+const commands = document.querySelectorAll('[data-action]');
+const dialog = byId('confirm');
+const drawing = byId('sld').getContext('2d');
+
+let lab;
+let pending;
+let view = 'overview';
+const yard = byId('yard');
+const viewpoints = document.querySelectorAll('[data-view]');
+const screens = document.querySelectorAll('[data-screen]');
+const links = document.querySelectorAll('.lab-nav a');
+
+function showScreen() {
+  const requested = location.hash.slice(1);
+  const active = [...screens].some(screen => screen.dataset.screen === requested) ? requested : 'station';
+  for (const screen of screens) screen.hidden = screen.dataset.screen !== active;
+  for (const link of links) {
+    if (link.hash === '#' + active) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  }
+}
+
+for (const button of viewpoints) {
+  button.onclick = () => {
+    view = button.dataset.view;
+    for (const camera of viewpoints) camera.setAttribute('aria-pressed', camera === button);
+    render();
+  };
+}
+
+function time(value) {
+  return (value / 1000).toFixed(1) + ' s';
+}
+
+function render() {
+  const station = lab.station();
+  const { quality, sample } = lab.supervisory();
+  const gateway = lab.gatewayDiagnostics();
+  drawSingleLine(drawing, station);
+  drawYard(yard, station, view);
+  yard.setAttribute('aria-label', 'Switchyard. Breaker ' + station.position +
+    '. Relay ' + (station.tripLatched ? 'TRIP' : 'READY') + '.');
+  set('local-position', station.position);
+  set('local-current', station.feederCurrentA + ' A');
+  set('relay-position', station.position);
+  set('authority', station.mode);
+  set('station-authority', station.mode);
+  set('trip-text', station.tripLatched ? 'LATCHED' : 'CLEAR');
+  set('station-trip', station.tripLatched ? 'LATCHED' : 'CLEAR');
+  byId('trip-lamp').classList.toggle('tripped', station.tripLatched);
+  set('remote-position', sample.position);
+  set('remote-current', sample.feederCurrentA + ' A');
+  set('remote-trip', sample.tripLatched ? 'LATCHED' : 'CLEAR');
+  set('quality', quality);
+  byId('quality').classList.toggle('stale', quality === 'STALE');
+  set('sample-time', time(sample.timeMs));
+  set('gateway-link', gateway.available ? 'CONNECTED' : 'DISCONNECTED');
+  set('gateway-quality', gateway.quality);
+  byId('gateway-quality').classList.toggle('stale', gateway.quality === 'STALE');
+  set('gateway-time', time(gateway.sample.timeMs));
+  set('gateway-position', gateway.sample.position);
+  set('gateway-current', gateway.sample.feederCurrentA + ' A');
+  set('gateway-trip', gateway.sample.tripLatched ? 'LATCHED' : 'CLEAR');
+  set('wan-status', gateway.available ? 'WAN CONNECTED' : 'WAN DISCONNECTED');
+  set('fault', station.fault ? 'Clear fault' : 'Apply fault');
+  set('link', gateway.available ? 'Drop WAN' : 'Restore WAN');
+  set('mode', station.mode === 'LOCAL' ? 'Select remote' : 'Select local');
+  for (const button of commands) {
+    button.disabled = button.dataset.origin === 'local'
+      ? station.mode !== 'LOCAL'
+      : quality !== 'LIVE' || sample.mode !== 'REMOTE';
+  }
+}
+
+function log(source, event, result) {
+  const row = byId('events').insertRow(0);
+  for (const value of [time(lab.time()), source, event, result]) {
+    row.insertCell().textContent = value;
+  }
+  if (byId('events').rows.length > 100) byId('events').deleteRow(-1);
+  set('operation', event + ' · ' + result);
+}
+
+function reset() {
+  lab = createClassroom();
+  byId('events').replaceChildren();
+  log('INSTRUCTOR', 'Exercise initialized', '52-F01 CLOSED');
+  render();
+}
+
+for (const button of commands) {
+  button.onclick = () => {
+    pending = button.dataset;
+    set('confirm-text', pending.origin.toUpperCase() + ' / 52-F01 / ' + pending.action.toUpperCase());
+    dialog.showModal();
+  };
+}
+
+dialog.addEventListener('close', () => {
+  if (dialog.returnValue === 'accept' && pending) {
+    const { origin, action } = pending;
+    const result = lab[origin](action);
+    lab.step();
+    log(origin.toUpperCase(), action.toUpperCase(), result.accepted ? 'Accepted' : result.reason);
+    if (result.accepted) log('PR-F01', 'Position feedback', lab.station().position);
+    render();
+  }
+  dialog.returnValue = '';
+  pending = undefined;
+});
+
+byId('fault').onclick = () => {
+  const active = !lab.station().fault;
+  const before = lab.station().tripLatched;
+  lab.setFault(active);
+  lab.step();
+  log('INSTRUCTOR', active ? 'Feeder fault applied' : 'Feeder fault cleared', lab.station().position);
+  if (!before && lab.station().tripLatched) log('PR-F01', 'Protection operated', 'TRIP LATCHED');
+  render();
+};
+byId('link').onclick = () => {
+  const available = !lab.gatewayDiagnostics().available;
+  lab.setLink(available);
+  lab.step();
+  log('GATEWAY', available ? 'WAN restored' : 'WAN disconnected', lab.supervisory().quality);
+  render();
+};
+byId('mode').onclick = () => {
+  const mode = lab.station().mode === 'LOCAL' ? 'REMOTE' : 'LOCAL';
+  lab.setMode(mode);
+  lab.step();
+  log('PR-F01', 'Control authority', mode);
+  render();
+};
+byId('reset').onclick = reset;
+reset();
+window.addEventListener('hashchange', showScreen);
+showScreen();
+
+</script>
+</body>
+</html>

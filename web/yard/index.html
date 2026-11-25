@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SIMF01 · F01 switchyard</title>
+<link rel="stylesheet" href="/yard/yard.css">
+<script src="/yard/yard.js" defer></script>
+<script type="module" src="/yard/view.mjs"></script>
+</head>
+<body>
+<header>
+  <strong>SIMF01</strong>
+  <h1>F01 switchyard and control room</h1>
+  <a href="/">Process diagnostics</a>
+</header>
+<main>
+  <aside aria-labelledby="readings-title">
+    <h2 id="readings-title">Live process indications</h2>
+    <dl>
+      <div><dt>Source bus voltage</dt><dd id="voltage">—</dd></div>
+      <div><dt>SIMF01 feeder current</dt><dd id="current">—</dd></div>
+      <div><dt>SIMF01 contact position</dt><dd id="position">UNKNOWN</dd></div>
+      <div><dt>Contact update UTC</dt><dd id="position-time">—</dd></div>
+      <div><dt>52a contact</dt><dd id="contact-a">—</dd></div>
+      <div><dt>52b contact</dt><dd id="contact-b">—</dd></div>
+      <div><dt>Feeder fault</dt><dd id="fault">UNKNOWN</dd></div>
+    </dl>
+    <p id="telemetry" role="status">Waiting for process feedback</p>
+    <h2>IED indications</h2>
+    <dl>
+      <div><dt>PRF01 input current</dt><dd id="relay-current">UNAVAILABLE</dd></div>
+      <div><dt>PRF01 trip</dt><dd id="relay-trip">UNAVAILABLE</dd></div>
+      <div><dt>BRF01 position</dt><dd id="breaker-position">UNAVAILABLE</dd></div>
+      <div><dt>BRF01 operation failure</dt><dd id="operation-failure">UNAVAILABLE</dd></div>
+    </dl>
+    <h2>Process disturbance</h2>
+    <div class="disturbance">
+      <p>These controls change the simulated feeder in SIMF01.</p>
+      <p id="direct-input-help" hidden>PRF01 takes current separately through the <a id="station-input-link">station HMI’s direct HTTP input</a>.</p>
+      <button type="button" data-scenario="fault">Apply SIMF01 fault</button>
+      <button type="button" data-scenario="clear">Clear SIMF01 fault</button>
+      <p id="scenario-status" role="status"></p>
+    </div>
+    <a class="license" href="/yard/Godot-LICENSE.txt">Godot licence</a>
+  </aside>
+  <section class="viewport" aria-label="3D substation">
+    <nav aria-label="Substation viewpoints">
+      <div class="view-group">
+        <span>Yard</span>
+        <button type="button" data-view="overview" aria-pressed="true">Overview</button>
+        <button type="button" data-view="breaker" aria-pressed="false">52-F01 breaker</button>
+        <button type="button" data-view="walk" aria-pressed="false">Walk from entrance</button>
+      </div>
+      <div class="view-group">
+        <span>Control room</span>
+        <button type="button" data-view="room" aria-pressed="false">Room overview</button>
+        <button type="button" data-view="protection" aria-pressed="false">Protection</button>
+        <button type="button" data-view="bay" aria-pressed="false">Bay control</button>
+        <button type="button" data-view="metering" aria-pressed="false">Process I/O</button>
+        <button type="button" data-view="walk-room" aria-pressed="false">Walk inside</button>
+      </div>
+    </nav>
+    <div class="canvas-frame">
+      <canvas id="yard-canvas" width="1280" height="720" tabindex="0" aria-label="3D switchyard viewer"></canvas>
+      <p id="engine-status" role="status">Loading 3D substation…</p>
+    </div>
+    <footer class="navigation">
+      <p id="view-help">Follow the 11 kV source through 52-F01 to the outgoing feeder.</p>
+      <div id="walk-controls" hidden aria-label="Walk controls">
+        <button type="button" data-motion="left" aria-label="Move left">←</button>
+        <button type="button" data-motion="forward" aria-label="Move forward">↑</button>
+        <button type="button" data-motion="back" aria-label="Move backward">↓</button>
+        <button type="button" data-motion="right" aria-label="Move right">→</button>
+        <button type="button" data-motion="turn-left">Turn left</button>
+        <button type="button" data-motion="turn-right">Turn right</button>
+        <button type="button" id="reset-walk">Reset position</button>
+      </div>
+    </footer>
+  </section>
+</main>
+</body>
+</html>

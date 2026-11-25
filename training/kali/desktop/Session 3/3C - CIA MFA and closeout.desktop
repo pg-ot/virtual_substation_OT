@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=3C - CIA MFA and closeout
+Exec=/bin/bash /opt/ss01/practicals/activity.sh 3C
+Terminal=true
+Icon=utilities-terminal

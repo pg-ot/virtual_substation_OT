@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=2A - Predict the signal journey
+Exec=/bin/bash /opt/ss01/practicals/activity.sh 2A
+Terminal=true
+Icon=utilities-terminal

@@ -1,0 +1,223 @@
+name: ss01-bench
+
+x-bench: &bench
+  image: ss01-bench:dev
+  pull_policy: never
+  init: true
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+x-profile: &profile
+  LAB_DISTRIBUTED: "1"
+  LAB_PROCESS_MODEL: "1"
+
+x-station-client: &station-client
+  <<: *profile
+  LAB_MMS_HOST: relay-station
+  LAB_BREAKER_MMS_HOST: breaker-station
+
+x-bay-ready: &bay-ready
+  protection:
+    condition: service_healthy
+  breaker:
+    condition: service_healthy
+
+x-check: &check
+  interval: 3s
+  timeout: 4s
+  retries: 5
+  start_period: 3s
+
+services:
+  plant:
+    <<: *bench
+    build:
+      context: .
+    command: [node, src/component-service.mjs, plant]
+    stdin_open: true
+    environment:
+      LAB_BIND_NAME: plant-process
+      LAB_PLANT_MMS_HOST: plant-process
+      LAB_LIVE_VARIATION: "1"
+      LAB_WEB_BIND_NAME: web-plant
+    networks:
+      process:
+        aliases: [plant-process]
+      management:
+        aliases: [web-plant]
+    ports:
+      - "127.0.0.1:${LAB_PLANT_WEB_PORT:-8081}:8090"
+    healthcheck:
+      <<: *check
+      test: [CMD, plant-read]
+
+  protection:
+    <<: *bench
+    user: "0:0"
+    cap_add: [NET_RAW]
+    command: [node, src/component-service.mjs, protection]
+    stdin_open: true
+    depends_on:
+      plant:
+        condition: service_healthy
+    environment:
+      <<: *profile
+      LAB_BIND_NAME: relay-station
+      LAB_MMS_HOST: relay-station
+      LAB_STATION_GOOSE: "1"
+      LAB_PROTECTION_PICKUP_A: "${LAB_PROTECTION_PICKUP_A-200}"
+      LAB_PROTECTION_DELAY_MS: "${LAB_PROTECTION_DELAY_MS-0}"
+      LAB_PLANT_MMS_HOST: plant-process
+      LAB_WEB_BIND_NAME: web-protection
+    networks:
+      process: {}
+      station:
+        aliases: [relay-station]
+      management:
+        aliases: [web-protection]
+    ports:
+      - "127.0.0.1:${LAB_PROTECTION_WEB_PORT:-8082}:8090"
+    healthcheck:
+      <<: *check
+      test: [CMD, station-client, goose-config]
+
+  breaker:
+    <<: *bench
+    user: "0:0"
+    cap_add: [NET_RAW]
+    command: [node, src/component-service.mjs, breaker]
+    stdin_open: true
+    depends_on:
+      plant:
+        condition: service_healthy
+    environment:
+      <<: *profile
+      LAB_BIND_NAME: breaker-station
+      LAB_BREAKER_MMS_HOST: breaker-station
+      LAB_MMS_HOST: relay-station
+      LAB_STATION_GOOSE: "1"
+      LAB_PLANT_MMS_HOST: plant-process
+      LAB_WEB_BIND_NAME: web-breaker
+    networks:
+      process: {}
+      station:
+        aliases: [breaker-station]
+      management:
+        aliases: [web-breaker]
+    ports:
+      - "127.0.0.1:${LAB_BREAKER_WEB_PORT:-8083}:8090"
+    healthcheck:
+      <<: *check
+      test: [CMD, breaker-read]
+
+  station-hmi:
+    <<: *bench
+    command: [node, src/serve.mjs, --native, /usr/local/bin]
+    depends_on: *bay-ready
+    environment:
+      <<: *station-client
+      LAB_HMI_BIND_ADDRESS: "0.0.0.0"
+      LAB_CAPTURE_AGENT_PORT: "${LAB_CAPTURE_AGENT_PORT:-34090}"
+      LAB_OVERVIEW_PLANT_PORT: "${LAB_PLANT_WEB_PORT:-8081}"
+      LAB_OVERVIEW_PROTECTION_PORT: "${LAB_PROTECTION_WEB_PORT:-8082}"
+      LAB_OVERVIEW_BREAKER_PORT: "${LAB_BREAKER_WEB_PORT:-8083}"
+      LAB_OVERVIEW_GATEWAY_PORT: "${LAB_GATEWAY_WEB_PORT:-8084}"
+      LAB_OVERVIEW_CENTRE_PORT: "${LAB_CONTROL_CENTRE_WEB_PORT:-8085}"
+      LAB_OVERVIEW_DNP3_GATEWAY_PORT: "${LAB_DNP3_GATEWAY_WEB_PORT:-8086}"
+      LAB_OVERVIEW_DNP3_CENTRE_PORT: "${LAB_DNP3_CONTROL_CENTRE_WEB_PORT:-8087}"
+      LAB_OVERVIEW_MERGING_PORT: "${LAB_MERGING_WEB_PORT:-8088}"
+      LAB_OVERVIEW_KALI_PORT: "${LAB_KALI_WEB_PORT:-6088}"
+    networks:
+      station: {}
+      management:
+        aliases: [web-station-hmi]
+    ports:
+      - "127.0.0.1:${LAB_HMI_PORT:-8080}:8080"
+    healthcheck:
+      <<: *check
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:8080/state').then(r => { if (!r.ok) process.exitCode = 1; }).catch(() => { process.exitCode = 1; })"]
+
+  gateway:
+    <<: *bench
+    command: [node, src/component-service.mjs, gateway]
+    depends_on: *bay-ready
+    environment:
+      <<: *station-client
+      LAB_IEC104_CONTROL: "${LAB_IEC104_CONTROL:-1}"
+      LAB_BIND_NAME: iec104-supervisory
+      LAB_WEB_BIND_NAME: web-gateway
+      LAB_IEC104_TIMEZONE: "${LAB_IEC104_TIMEZONE:-}"
+    networks:
+      station: {}
+      supervisory:
+        aliases: [iec104-supervisory]
+      management:
+        aliases: [web-gateway]
+    ports:
+      - "127.0.0.1:${LAB_GATEWAY_WEB_PORT:-8084}:8090"
+
+  control-centre:
+    <<: *bench
+    command: [node, src/component-service.mjs, control-centre]
+    depends_on: [gateway]
+    restart: unless-stopped
+    environment:
+      LAB_IEC104_CONTROL: "${LAB_IEC104_CONTROL:-1}"
+      LAB_IEC104_HOST: iec104-supervisory
+      LAB_WEB_BIND_NAME: web-control-centre
+      LAB_IEC104_TIMEZONE: "${LAB_IEC104_TIMEZONE:-}"
+    networks:
+      supervisory: {}
+      management:
+        aliases: [web-control-centre]
+    ports:
+      - "127.0.0.1:${LAB_CONTROL_CENTRE_WEB_PORT:-8085}:8090"
+
+  gateway-dnp3:
+    <<: *bench
+    profiles: [dnp3]
+    command: [node, src/component-service.mjs, gateway-dnp3]
+    depends_on: *bay-ready
+    environment:
+      <<: *station-client
+      LAB_BIND_NAME: dnp3-supervisory
+      LAB_WEB_BIND_NAME: web-gateway-dnp3
+    networks:
+      station: {}
+      supervisory:
+        aliases: [dnp3-supervisory]
+      management:
+        aliases: [web-gateway-dnp3]
+    ports:
+      - "127.0.0.1:${LAB_DNP3_GATEWAY_WEB_PORT:-8086}:8090"
+
+  control-centre-dnp3:
+    <<: *bench
+    profiles: [dnp3]
+    command: [node, src/component-service.mjs, control-centre-dnp3]
+    depends_on: [gateway-dnp3]
+    environment:
+      LAB_BIND_ADDRESS: "0.0.0.0"
+      LAB_DNP3_HOST: dnp3-supervisory
+      LAB_WEB_BIND_NAME: web-control-centre-dnp3
+    networks:
+      supervisory: {}
+      management:
+        aliases: [web-control-centre-dnp3]
+    ports:
+      - "127.0.0.1:${LAB_DNP3_CONTROL_CENTRE_WEB_PORT:-8087}:8090"
+
+networks:
+  process:
+    internal: true
+  station:
+    internal: true
+  supervisory:
+    internal: true
+  management: {}

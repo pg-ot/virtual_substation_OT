@@ -1,0 +1,93 @@
+# Optional training-only VPN and jump host. The base lab remains unchanged.
+services:
+  access-keys:
+    image: ss01-secure-access:local
+    build:
+      context: .
+      dockerfile: containers/secure-access/Dockerfile
+    profiles: [secure-access]
+    command: [init]
+    network_mode: none
+    volumes:
+      - access-server-keys:/keys/server
+      - access-client-keys:/keys/client
+      - access-jump-keys:/keys/jump
+
+  access-vpn:
+    image: ss01-secure-access:local
+    profiles: [secure-access]
+    command: [vpn-server]
+    init: true
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN, NET_BIND_SERVICE, NET_RAW, SETUID, SETGID]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs:
+      - /tmp
+    depends_on:
+      access-keys:
+        condition: service_completed_successfully
+    volumes:
+      - access-server-keys:/keys:ro
+    networks: [access-remote, access-jump]
+    healthcheck:
+      test: [CMD, wg, show, wg0]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  access-jump:
+    image: ss01-secure-access:local
+    profiles: [secure-access]
+    command: [jump]
+    init: true
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE, SETUID, SETGID, CHOWN, SYS_CHROOT]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs:
+      - /run
+      - /tmp
+    depends_on:
+      access-keys:
+        condition: service_completed_successfully
+    volumes:
+      - access-jump-keys:/keys:ro
+    networks: [access-jump, management]
+
+  access-client:
+    image: ss01-secure-access:local
+    profiles: [secure-access]
+    command: [vpn-client]
+    init: true
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs:
+      - /run
+      - /tmp
+    depends_on:
+      access-keys:
+        condition: service_completed_successfully
+      access-vpn:
+        condition: service_healthy
+      access-jump:
+        condition: service_started
+    volumes:
+      - access-client-keys:/keys:ro
+    networks: [access-remote, access-display]
+    ports:
+      - "127.0.0.1:${LAB_SECURE_ACCESS_PORT:-18084}:18084"
+
+networks:
+  access-remote:
+    internal: true
+  access-jump:
+    internal: true
+  access-display: {}
+
+volumes:
+  access-server-keys:
+  access-client-keys:
+  access-jump-keys:

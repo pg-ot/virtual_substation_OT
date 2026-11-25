@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SCL xmlns="http://www.iec.ch/61850/2003/SCL" version="2007" revision="B">
+  <Header id="SS01-F01" version="1" revision="0"/>
+  <Communication>
+    <SubNetwork name="StationBus" type="8-MMS">
+      <ConnectedAP iedName="PRF01" apName="AP1">
+        <GSE ldInst="LD0" cbName="Protection">
+          <Address>
+            <P type="MAC-Address">01-0C-CD-01-00-01</P>
+            <P type="APPID">1000</P>
+            <P type="VLAN-ID">000</P>
+            <P type="VLAN-PRIORITY">4</P>
+          </Address>
+          <MinTime unit="s" multiplier="m">20</MinTime>
+          <MaxTime unit="s" multiplier="m">1000</MaxTime>
+        </GSE>
+      </ConnectedAP>
+    </SubNetwork>
+  </Communication>
+  <IED name="PRF01">
+    <AccessPoint name="AP1">
+      <Server>
+        <Authentication/>
+        <LDevice inst="LD0">
+          <LN0 lnClass="LLN0" inst="" lnType="FeederLN0">
+            <DataSet name="BayStatus">
+              <FCDA ldInst="LD0" lnClass="XCBR" lnInst="1" doName="Pos" fc="ST"/>
+              <FCDA ldInst="LD0" lnClass="PTRC" lnInst="1" doName="Tr" daName="general" fc="ST"/>
+              <FCDA ldInst="LD0" lnClass="MMXU" lnInst="1" doName="A.phsA" fc="MX"/>
+            </DataSet>
+            <DataSet name="ProtectionData">
+              <FCDA ldInst="LD0" lnClass="PTRC" lnInst="1" doName="Tr" daName="general" fc="ST"/>
+              <FCDA ldInst="LD0" lnClass="PTRC" lnInst="1" doName="Tr" daName="q" fc="ST"/>
+            </DataSet>
+            <ReportControl name="BayReport" rptID="BayReport" datSet="BayStatus" confRev="1"
+                           buffered="false" bufTime="50" intgPd="0">
+              <TrgOps dchg="true" qchg="true" gi="true"/>
+              <OptFields seqNum="true" timeStamp="true" reasonCode="true" dataSet="true" configRef="true"/>
+              <RptEnabled max="1"/>
+            </ReportControl>
+            <GSEControl name="Protection" appID="F01Protection" datSet="ProtectionData" confRev="3" type="GOOSE"/>
+          </LN0>
+          <LN lnClass="LPHD" inst="1" lnType="FeederLPHD"/>
+          <LN lnClass="XCBR" inst="1" lnType="FeederXCBR">
+            <DOI name="Pos"><DAI name="ctlModel"><Val>direct-with-enhanced-security</Val></DAI></DOI>
+          </LN>
+          <LN lnClass="PTRC" inst="1" lnType="FeederPTRC"/>
+          <LN lnClass="MMXU" inst="1" lnType="FeederMMXU"/>
+        </LDevice>
+      </Server>
+    </AccessPoint>
+  </IED>
+  <DataTypeTemplates>
+    <LNodeType id="FeederLN0" lnClass="LLN0"><DO name="Beh" type="Behaviour"/></LNodeType>
+    <LNodeType id="FeederLPHD" lnClass="LPHD"><DO name="PhyHealth" type="PhysicalHealth"/></LNodeType>
+    <LNodeType id="FeederXCBR" lnClass="XCBR"><DO name="Pos" type="BreakerPosition"/></LNodeType>
+    <LNodeType id="FeederPTRC" lnClass="PTRC"><DO name="Tr" type="ProtectionTrip"/></LNodeType>
+    <LNodeType id="FeederMMXU" lnClass="MMXU"><DO name="A" type="PhaseCurrents"/></LNodeType>
+    <DOType id="Behaviour" cdc="ENS">
+      <DA name="stVal" bType="Enum" type="BehaviourKind" fc="ST" dchg="true"><Val>on</Val></DA>
+      <DA name="q" bType="Quality" fc="ST" qchg="true"/>
+      <DA name="t" bType="Timestamp" fc="ST"/>
+    </DOType>
+    <DOType id="PhysicalHealth" cdc="ENS">
+      <DA name="stVal" bType="Enum" type="HealthKind" fc="ST" dchg="true"><Val>Ok</Val></DA>
+      <DA name="q" bType="Quality" fc="ST" qchg="true"/>
+      <DA name="t" bType="Timestamp" fc="ST"/>
+    </DOType>
+    <DOType id="BreakerPosition" cdc="DPC">
+      <DA name="stVal" bType="Dbpos" fc="ST" dchg="true"/>
+      <DA name="q" bType="Quality" fc="ST" qchg="true"/>
+      <DA name="t" bType="Timestamp" fc="ST"/>
+      <DA name="ctlModel" bType="Enum" type="ControlModel" fc="CF"/>
+      <DA name="Oper" bType="Struct" type="BreakerOperate" fc="CO"/>
+    </DOType>
+    <DOType id="ProtectionTrip" cdc="ACT">
+      <DA name="general" bType="BOOLEAN" fc="ST" dchg="true"/>
+      <DA name="q" bType="Quality" fc="ST" qchg="true"/>
+      <DA name="t" bType="Timestamp" fc="ST"/>
+    </DOType>
+    <DOType id="PhaseCurrents" cdc="WYE"><SDO name="phsA" type="PhaseCurrent"/></DOType>
+    <DOType id="PhaseCurrent" cdc="CMV">
+      <DA name="cVal" bType="Struct" type="CurrentVector" fc="MX" dchg="true"/>
+      <DA name="q" bType="Quality" fc="MX" qchg="true"/>
+      <DA name="t" bType="Timestamp" fc="MX"/>
+    </DOType>
+    <DAType id="CurrentVector"><BDA name="mag" bType="Struct" type="AnalogueValue"/></DAType>
+    <DAType id="AnalogueValue"><BDA name="f" bType="FLOAT32"/></DAType>
+    <DAType id="Origin">
+      <BDA name="orCat" bType="Enum" type="OriginCategory"/>
+      <BDA name="orIdent" bType="Octet64"/>
+    </DAType>
+    <DAType id="BreakerOperate">
+      <BDA name="ctlVal" bType="BOOLEAN"/>
+      <BDA name="origin" bType="Struct" type="Origin"/>
+      <BDA name="ctlNum" bType="INT8U"/>
+      <BDA name="T" bType="Timestamp"/>
+      <BDA name="Test" bType="BOOLEAN"/>
+      <BDA name="Check" bType="Check"/>
+    </DAType>
+    <EnumType id="ControlModel">
+      <EnumVal ord="0">status-only</EnumVal>
+      <EnumVal ord="1">direct-with-normal-security</EnumVal>
+      <EnumVal ord="2">sbo-with-normal-security</EnumVal>
+      <EnumVal ord="3">direct-with-enhanced-security</EnumVal>
+      <EnumVal ord="4">sbo-with-enhanced-security</EnumVal>
+    </EnumType>
+    <EnumType id="BehaviourKind">
+      <EnumVal ord="1">on</EnumVal>
+      <EnumVal ord="2">blocked</EnumVal>
+      <EnumVal ord="3">test</EnumVal>
+      <EnumVal ord="4">test/blocked</EnumVal>
+      <EnumVal ord="5">off</EnumVal>
+    </EnumType>
+    <EnumType id="HealthKind">
+      <EnumVal ord="1">Ok</EnumVal>
+      <EnumVal ord="2">Warning</EnumVal>
+      <EnumVal ord="3">Alarm</EnumVal>
+    </EnumType>
+    <EnumType id="OriginCategory">
+      <EnumVal ord="0">not-supported</EnumVal>
+      <EnumVal ord="1">bay-control</EnumVal>
+      <EnumVal ord="2">station-control</EnumVal>
+      <EnumVal ord="3">remote-control</EnumVal>
+      <EnumVal ord="4">automatic-bay</EnumVal>
+      <EnumVal ord="5">automatic-station</EnumVal>
+      <EnumVal ord="6">automatic-remote</EnumVal>
+      <EnumVal ord="7">maintenance</EnumVal>
+      <EnumVal ord="8">process</EnumVal>
+    </EnumType>
+  </DataTypeTemplates>
+</SCL>

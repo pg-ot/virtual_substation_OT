@@ -1,0 +1,12 @@
+*
+!native/
+!native/**
+!src/
+!src/**
+!web/
+!web/**
+!containers/
+!containers/entrypoint.sh
+!containers/deps/
+!containers/deps/**
+containers/deps/archives/*.partial

@@ -1,0 +1,64 @@
+* { box-sizing: border-box; }
+:root { font: 14px "Segoe UI", sans-serif; color: #20262b; background: #c7cdd0; }
+body { margin: 0; }
+header, footer { display: flex; align-items: center; gap: 18px; padding: 9px 16px; background: #26343d; color: #f2f5f6; }
+header strong { letter-spacing: .09em; }
+header span, footer { font-size: 12px; }
+.training { margin-left: auto; color: #ffd493; }
+main { padding: 10px; max-width: 1440px; margin: auto; }
+.workspace { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 8px; }
+section { border: 1px solid #7c888e; background: #e1e5e6; min-width: 0; }
+h2 { margin: 0; padding: 5px 9px; background: #485963; color: white; font-size: 13px; font-weight: 600; }
+.drawing { background: #d8dddf; }
+.station-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; padding: 8px 10px; border-top: 1px solid #aab4b8; background: #c9d2d6; }
+.station-controls strong, #command-result { font: 12px Consolas, monospace; }
+.station-controls button { min-width: 65px; }
+.lab-nav { display: flex; flex-wrap: wrap; background: #36464f; padding: 0 10px; gap: 1px; }
+.lab-nav a { color: #f1f5f6; padding: 8px 12px; text-decoration: none; border-bottom: 2px solid transparent; }
+.lab-nav a:hover, .lab-nav a:focus-visible { background: #4b5b64; }
+.lab-nav a[aria-current="page"] { background: #e1e5e6; border-color: #526773; color: #20262b; }
+[hidden] { display: none !important; }
+.device-screen { max-width: 540px; }
+.yard canvas { max-width: 940px; margin: auto; }
+.yard button[aria-pressed="true"] { background: #485963; color: white; }
+canvas { display: block; width: 100%; height: auto; }
+table { width: 100%; border-collapse: collapse; font: 12px Consolas, monospace; }
+th, td { padding: 5px 8px; border-bottom: 1px solid #aab4b8; text-align: left; }
+thead th { background: #b9c4c9; }
+tbody tr:nth-child(even) { background: #d7dfe2; }
+.relay { margin: 8px; border: 1px solid #111a20; padding: 10px; background: #30393f; color: #edf1f2; }
+.relay-tag, .lamps { display: flex; justify-content: space-between; gap: 12px; font: 12px Consolas, monospace; }
+.relay-tag span { color: #c5cfd3; }
+.lamps { margin: 12px 0 8px; }
+.lamp { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #5b6468; border: 1px solid #121719; }
+.lamp.ready { background: #6ab979; }
+.lamp.tripped { background: #ff645d; }
+.lcd { margin: 0; padding: 9px; display: grid; grid-template-columns: 1fr auto; gap: 3px 16px; background: #c8d3ac; color: #212819; font: 13px Consolas, monospace; border: 2px inset #9ca88d; }
+dd { margin: 0; text-align: right; }
+.keys { display: flex; flex-wrap: wrap; gap: 6px; padding: 7px; }
+.relay .keys { padding: 9px 0 0; }
+button { font: inherit; font-size: 12px; padding: 5px 9px; border: 1px solid #677781; border-radius: 0; background: #edf0f1; color: #20262b; cursor: pointer; }
+button:hover:enabled { background: #d3e2eb; }
+button:focus-visible { outline: 2px solid #356ca2; outline-offset: 2px; }
+button:disabled { color: #566166; background: #c3c9cc; cursor: default; }
+.stale { color: #754500; font-weight: bold; background: #f3d99d; }
+#points th { overflow-wrap: anywhere; }
+#points small { display: block; font-size: inherit; font-weight: normal; }
+#points .trip-alarm { color: #7a241d; background: #f3d0c7; }
+.component-layout { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 3fr); gap: 8px; }
+.device-faceplate { display: grid; gap: 7px; padding: 14px 10px; color: #d9e8de; background: #26343d; font: 13px Consolas, monospace; }
+.device-faceplate output { font-size: 22px; font-weight: bold; }
+.device-alarm { color: #ffcbbe; background: #562c28; }
+.device-yard-link { color: #fff0c7; font-size: 13px; }
+.device-scroll { overflow: auto; }
+.device-scroll td { white-space: nowrap; }
+.device-scroll #points th { min-width: 190px; overflow-wrap: normal; }
+@media (max-width: 760px) { .component-layout { grid-template-columns: minmax(0, 1fr); } }
+.events, .instructor { margin-top: 8px; }
+.event-scroll { max-height: 156px; min-height: 76px; overflow: auto; }
+.event-scroll thead { position: sticky; top: 0; }
+footer { min-height: 36px; flex-wrap: wrap; }
+dialog { padding: 0; border: 1px solid #26343d; background: #e1e5e6; color: #20262b; min-width: min(320px, 90vw); }
+dialog p { margin: 12px; }
+dialog::backdrop { background: #18202688; }
+@media (max-width: 680px) { .workspace { grid-template-columns: 1fr; } header { flex-wrap: wrap; gap: 5px 12px; } }

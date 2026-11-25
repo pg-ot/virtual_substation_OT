@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SS-01 | Station SCADA</title>
+<link rel="stylesheet" href="/station.css">
+<link rel="stylesheet" href="/industrial.css">
+<script type="module" src="/native-station.mjs"></script>
+</head>
+<body class="scada">
+<header class="scada-header">
+  <div class="station-id"><span class="station-mark" aria-hidden="true">S</span><div><strong>SS-01</strong><span>Station SCADA</span></div></div>
+  <div class="station-context"><b>11 kV station</b><span> / </span>Feeder F01</div>
+  <div class="station-health"><span id="reader" role="status">MMS READER STARTING</span><time id="station-clock"></time></div>
+</header>
+<nav class="scada-toolbar" aria-label="Station displays">
+  <a class="lab-overview-link" href="/lab-overview">Lab overview</a>
+  <button type="button" data-station-view="overview" aria-pressed="true">Single-line</button>
+  <button type="button" data-station-view="points" aria-pressed="false">Point list</button>
+  <button type="button" data-station-view="events" aria-pressed="false">Event log</button>
+  <span class="station-mode">MMS MONITORING · READ ONLY</span>
+</nav>
+<main class="scada-main">
+  <div class="alarm-summary" id="alarm-summary" role="status" data-level="unknown">Waiting for bay indications</div>
+  <!-- PROCESS_INPUT_PANEL -->
+  <div class="scada-workspace" id="station-overview">
+    <section class="scada-panel mimic" aria-labelledby="diagram-title">
+      <div class="scada-panel-title"><h1 id="diagram-title">11 kV single-line</h1><span>SS-01 / F01</span></div>
+      <div class="mimic-drawing">
+        <canvas id="sld" width="960" height="520" aria-label="Feeder F01, breaker position unknown"></canvas>
+        <button type="button" class="breaker-hotspot" id="breaker-hotspot" aria-label="Open 52-F01 breaker faceplate"></button>
+      </div>
+      <div class="mimic-legend">
+        <span><i class="legend-box closed"></i>Closed</span>
+        <span><i class="legend-box open"></i>Open</span>
+        <span><i class="legend-box unknown"></i>Unknown / transition</span>
+      </div>
+    </section>
+    <section class="scada-panel station-faceplate" aria-labelledby="faceplate-title" tabindex="-1">
+      <div class="scada-panel-title"><h2 id="faceplate-title">Breaker faceplate</h2><span>BRF01</span></div>
+      <div class="faceplate-id"><strong>52-F01</strong><span>Feeder circuit breaker</span></div>
+      <div class="faceplate-position" id="faceplate-visual" data-position="unknown">
+        <i aria-hidden="true"></i><div><span>Contact-confirmed position</span><output id="fp-position">UNKNOWN</output></div>
+      </div>
+      <dl class="faceplate-readings">
+        <div><dt>PRF01 phase A input</dt><dd id="fp-current">—</dd></div>
+        <div><dt>Protection trip</dt><dd id="fp-trip">UNKNOWN</dd></div>
+        <div><dt>BRF01 close latch</dt><dd id="fp-latch">UNKNOWN</dd></div>
+        <div><dt>Operation failure</dt><dd id="fp-failure">UNKNOWN</dd></div>
+        <div><dt>Position feedback</dt><dd id="fp-quality">UNKNOWN · BRF01 MMS</dd></div>
+        <div><dt>Source time UTC</dt><dd id="fp-time">—</dd></div>
+      </dl>
+      <!-- STATION_CONTROLS -->
+    </section>
+  </div>
+  <section class="scada-panel scada-list" id="station-points" aria-labelledby="signals-title" hidden>
+    <div class="scada-panel-title"><h2 id="signals-title">Bay point list</h2><span>IEC 61850 MMS</span></div>
+    <div class="scada-table-scroll"><table>
+      <thead><tr><th scope="col">Point and source</th><th scope="col">Indication</th><th scope="col">Quality</th><th scope="col">Source time (UTC)</th></tr></thead>
+      <tbody id="points"></tbody>
+    </table></div>
+  </section>
+  <section class="scada-panel scada-list" id="station-events" aria-labelledby="events-title">
+    <div class="scada-panel-title"><h2 id="events-title">Event log</h2><button type="button" id="expand-events" aria-label="Expand the event log">Expand</button></div>
+    <div class="scada-table-scroll"><table>
+      <thead><tr><th scope="col">Observed (UTC)</th><th scope="col">Source time (UTC)</th><th scope="col">MMS source</th><th scope="col">Point</th><th scope="col">Indication</th><th scope="col">Quality</th></tr></thead>
+      <tbody id="events"></tbody>
+    </table></div>
+  </section>
+</main>
+</body>
+</html>

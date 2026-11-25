@@ -1,0 +1,17 @@
+Port 22
+HostKey /keys/ssh_host_ed25519_key
+PidFile /run/sshd.pid
+AuthorizedKeysFile /keys/authorized_keys
+AllowUsers vendor
+PubkeyAuthentication yes
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin no
+UsePAM no
+PermitTTY no
+X11Forwarding no
+AllowAgentForwarding no
+AllowTcpForwarding local
+PermitOpen web-gateway:8090
+MaxSessions 0
+LogLevel DEBUG1

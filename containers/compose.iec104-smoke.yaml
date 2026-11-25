@@ -1,0 +1,13 @@
+services:
+  plant:
+    image: ${IEC104_TEST_IMAGE:?Set a unique disposable image tag}
+  protection:
+    image: ${IEC104_TEST_IMAGE:?Set a unique disposable image tag}
+  breaker:
+    image: ${IEC104_TEST_IMAGE:?Set a unique disposable image tag}
+  station-hmi:
+    image: ${IEC104_TEST_IMAGE:?Set a unique disposable image tag}
+  gateway:
+    image: ${IEC104_TEST_IMAGE:?Set a unique disposable image tag}
+  control-centre:
+    image: ${IEC104_TEST_IMAGE:?Set a unique disposable image tag}

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SS-01 Device Console</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#cbd2d5;color:#202a31;font:14px "Segoe UI",sans-serif}
+header{background:#25343e;color:#f3f5f6;padding:12px 16px;font-weight:700}
+main{padding:10px;max-width:940px;margin:auto}section{background:#e4e8ea;border:1px solid #85949d;margin-bottom:9px}
+h1,h2{font-size:14px;margin:0;padding:6px 9px;background:#475963;color:#fff}
+table{width:100%;border-collapse:collapse;font:13px Consolas,monospace}td,th{padding:6px 9px;border-bottom:1px solid #b1bec4;text-align:left}
+th{width:38%}tbody tr:nth-child(even){background:#dae1e4}.alarm{background:#f0d5a0;font-weight:bold}
+.actions{display:flex;flex-wrap:wrap;gap:7px;padding:8px}button{padding:5px 10px;background:#f0f2f3;border:1px solid #788892;color:#202a31}
+button:focus-visible{outline:2px solid #245c86}p{margin:7px 9px}.events{overflow:auto;max-height:230px}
+</style>
+</head>
+<body>
+<header>SS-01 / F01 / DEVICE SERVICE</header>
+<main>
+<section><h1 id="title"></h1><table aria-label="Device indications"><tbody id="points"></tbody></table></section>
+<section id="instructor" hidden>
+<h2>Instructor actions</h2>
+<div class="actions"><button data-action="fault">Apply fault</button><button data-action="clear">Clear fault</button><button data-action="reset">Reset trip latch</button></div>
+<p id="feedback" role="status"></p>
+</section>
+<section><h2>Device events</h2><div class="events"><table aria-label="Device events"><tbody id="events"></tbody></table></div></section>
+<p id="status" role="status"></p>
+</main>
+<script>
+const role = '__ROLE__';
+const protection = role === 'protection';
+const byId = id => document.getElementById(id);
+byId('title').textContent = protection ? 'PR-F01 · Protection IED / MMS' : 'BRF01 · Breaker IED / GOOSE and MMS';
+byId('instructor').hidden = !protection;
+const labels = { position:'Breaker position', trip:'Trip indication', currentA:'Phase A current (A)',
+  positionQuality:'MMS position quality', sourceAt:'Source time (UTC)', stateNumber:'State number',
+  sequenceNumber:'Sequence number', revision:'Configuration revision', ttlMs:'Time allowed to live (ms)',
+  receivedAt:'Last validated receipt (UTC)' };
+function row(cells, heading = false) {
+  const tr = document.createElement('tr');
+  for (const [index, value] of cells.entries()) {
+    const cell = document.createElement(heading && index === 0 ? 'th' : 'td');
+    if (heading && index === 0) cell.scope = 'row';
+    cell.textContent = value;
+    if (['STALE','INVALID'].includes(value)) cell.className = 'alarm';
+    tr.append(cell);
+  }
+  return tr;
+}
+async function refresh() {
+  try {
+    const response = await fetch('/state', {signal: AbortSignal.timeout(2000)});
+    if (!response.ok) throw Error('Service unavailable');
+    const state = await response.json();
+    const points = [[protection ? 'MMS quality' : 'GOOSE quality',state.quality],
+      ['Station interface',state.interface ?? 'MMS only']];
+    if (state.feedback) {
+      points.push(['Confirmed breaker position',state.feedback.position ?? 'UNKNOWN'],
+        ['Breaker MMS quality',state.feedback.quality], ['Breaker source time (UTC)',state.feedback.sourceAt ?? '—']);
+      if (state.feedback.operationFailure !== undefined)
+        points.push(['Operation failure', state.feedback.quality === 'STALE' ? 'STALE' :
+          state.feedback.operationFailure ? 'ASSERTED' : 'CLEAR']);
+    }
+    for (const [key, value] of Object.entries(state.sample || {})) {
+      const label = labels[key] ?? key;
+      points.push([label, key === 'trip' ? (value ? 'ASSERTED' : 'CLEAR') : value]);
+    }
+    byId('points').replaceChildren(...points.map(point => row(point,true)));
+    byId('events').replaceChildren(...state.events.map(event => row([event.time,event.message])));
+    byId('status').textContent = '';
+  } catch {
+    byId('points').replaceChildren(row(['Quality','UNKNOWN'],true));
+    byId('status').textContent = 'Console service unavailable';
+  } finally {
+    setTimeout(refresh, 500);
+  }
+}
+for (const button of document.querySelectorAll('[data-action]')) {
+  button.onclick = async () => {
+    if (!confirm('Submit instructor action: ' + button.textContent + '?')) return;
+    try {
+      const response = await fetch('/instructor/' + button.dataset.action, {method:'POST'});
+      byId('feedback').textContent = response.ok
+        ? 'Submitted. Check the device event and returned indications.'
+        : 'Action was not submitted.';
+    } catch {
+      byId('feedback').textContent = 'Console service unavailable';
+    }
+  };
+}
+refresh();
+</script>
+</body>
+</html>

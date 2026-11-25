@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=2E - Follow IEC 104 points
+Exec=/bin/bash /opt/ss01/practicals/activity.sh 2E
+Terminal=true
+Icon=utilities-terminal

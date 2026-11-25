@@ -3,9 +3,16 @@
 *.a
 *.so
 build/
+/build-native/
+/yard/.godot/
+/containers/deps/archives/
 libiec61850/build/
 
+# Generated reports, training decks and packet captures (large/binary; not source)
+/outputs/
+
 # Temporary files
+.env
 /tmp/gui_data.txt
 /tmp/goose_data.txt
 /tmp/gui_publisher*

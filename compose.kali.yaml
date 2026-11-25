@@ -1,0 +1,57 @@
+# Optional GRFICSv3 desktop on the supervisory training WAN.
+services:
+  kali:
+    image: ss01-kali:dev
+    build:
+      context: .
+      dockerfile: containers/kali.Dockerfile
+    profiles: [kali]
+    init: true
+    entrypoint: ["/bin/sh", "/opt/ss01/kali-desktop.sh"]
+    command: []
+    security_opt: [no-new-privileges:true]
+    logging: &bounded-logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks: [kali-wan, supervisory]
+    volumes:
+      - ./containers/kali-desktop.sh:/opt/ss01/kali-desktop.sh:ro
+      - ./containers/kali-supervisord.conf:/opt/ss01/kali-supervisord.conf:ro
+      - ./training/kali:/opt/ss01/practicals:ro
+      - ./training/kali/desktop:/home/kali/Desktop/SS-01 Practicals:ro
+      - ./outputs/SS-01-practical-workbook.html:/opt/ss01/workbook.html:ro
+      - kali-captures:/captures
+    healthcheck:
+      test: [CMD, curl, -fsS, http://127.0.0.1:6080/vnc.html]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  kali-access:
+    image: ss01-bench:dev
+    pull_policy: never
+    profiles: [kali]
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    logging: *bounded-logging
+    entrypoint: [node, /app/kali-proxy.mjs]
+    depends_on:
+      kali:
+        condition: service_healthy
+    networks: [kali-wan, management]
+    ports:
+      - "127.0.0.1:${LAB_KALI_WEB_PORT:-6088}:6080"
+    volumes:
+      - ./containers/kali-proxy.mjs:/app/kali-proxy.mjs:ro
+
+networks:
+  kali-wan:
+    internal: true
+
+volumes:
+  kali-captures:

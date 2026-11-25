@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=2G - IEC 104 control
+Exec=/bin/bash /opt/ss01/practicals/activity.sh 2G
+Terminal=true
+Icon=utilities-terminal

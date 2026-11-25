@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SS-01 | Lab overview</title>
+<link rel="stylesheet" href="/station.css">
+<link rel="stylesheet" href="/industrial.css">
+<link rel="stylesheet" href="/lab-overview.css">
+<script type="module" src="/lab-overview.mjs"></script>
+</head>
+<body class="scada lab">
+<header class="scada-header">
+  <div class="station-id"><span class="station-mark" aria-hidden="true">S</span><div><strong>SS-01</strong><span>Virtual substation</span></div></div>
+  <div class="station-context"><b>11 kV station</b><span> / </span>Feeder F01</div>
+  <div class="lab-header-note">TRAINING ENVIRONMENT · CAPTURE CONTROLS</div>
+</header>
+<nav class="lab-toolbar" aria-label="Lab navigation">
+  <a href="/lab-overview" aria-current="page">Lab overview</a>
+  <a href="/">Station SCADA</a>
+  <span>ARCHITECTURE &amp; ASSET DIRECTORY</span>
+</nav>
+<main class="lab-main">
+  <div class="lab-intro">
+    <div><p class="eyebrow">SS-01 / SYSTEM OVERVIEW</p><h1>Virtual substation lab</h1>
+      <p class="intro-copy">Explore the station from process equipment to remote control. Select an asset to open its own interface.</p></div>
+    <div class="intro-meta"><span>ACTIVE FEEDER</span><strong>F01</strong><span>33 / 11 kV · 50 Hz model</span></div>
+  </div>
+
+  <div class="lab-layout">
+    <div class="architecture">
+      <div class="section-heading"><div><p class="eyebrow">SYSTEM TOPOLOGY</p><h2>Architecture</h2></div><span>SELECT AN ASSET ↗</span></div>
+      <div class="signal-route" aria-label="Protection signal path">
+        <div><small>INPUT</small><strong id="route-input">Process current</strong></div><span aria-hidden="true">→</span>
+        <div><small>PROTECTION</small><strong>PRF01</strong></div><span aria-hidden="true">→ <i>GOOSE</i> →</span>
+        <div><small>CONTROL</small><strong>BRF01</strong></div><span aria-hidden="true">→</span>
+        <div><small>PROCESS</small><strong>52-F01 contacts</strong></div><span aria-hidden="true">→ <i>MMS</i> →</span>
+        <div><small>INDICATION</small><strong>HMI / gateways</strong></div>
+      </div>
+      <section class="level" aria-labelledby="remote-heading">
+        <div class="level-heading"><span>01</span><div><h3 id="remote-heading">Remote &amp; analysis</h3><p>Supervisory monitoring and packet analysis</p></div></div>
+        <div class="asset-grid">
+          <a class="asset" data-asset="centre" target="_blank" rel="noopener noreferrer"><span class="asset-symbol" aria-hidden="true">CC</span><span class="asset-content"><strong>IEC 104 control centre</strong><small>Monitoring and supervised breaker control</small><span class="asset-status" data-status="centre">Checking page…</span></span><span class="external" aria-hidden="true">↗</span></a>
+          <a class="asset" data-asset="dnp3Centre" target="_blank" rel="noopener noreferrer"><span class="asset-symbol" aria-hidden="true">CC</span><span class="asset-content"><strong>DNP3 control centre</strong><small>Optional monitoring master</small><span class="asset-status" data-status="dnp3Centre">Checking page…</span></span><span class="external" aria-hidden="true">↗</span></a>
+          <a class="asset" data-asset="kali" data-path="/vnc.html" target="_blank" rel="noopener noreferrer"><span class="asset-symbol" aria-hidden="true">AN</span><span class="asset-content"><strong>Kali workstation</strong><small>Optional capture analysis</small><span class="asset-status" data-status="kali">Checking page…</span></span><span class="external" aria-hidden="true">↗</span></a>
+        </div>
+      </section>
+      <div class="network-band"><span class="network-line"></span><strong>SUPERVISORY NETWORK</strong><span>IEC 104 monitoring &amp; supervised control / DNP3 monitoring</span></div>
+      <section class="level" aria-labelledby="station-heading">
+        <div class="level-heading"><span>02</span><div><h3 id="station-heading">Station level</h3><p>Operator interface and protocol gateways</p></div></div>
+        <div class="asset-grid">
+          <a class="asset" href="/" target="_blank" rel="noopener noreferrer"><span class="asset-symbol" aria-hidden="true">HMI</span><span class="asset-content"><strong>Station SCADA</strong><small>Single-line, indications and control</small><span class="asset-status reachable">This station interface</span></span><span class="external" aria-hidden="true">↗</span></a>
+          <a class="asset" data-asset="gateway" target="_blank" rel="noopener noreferrer"><span class="asset-symbol" aria-hidden="true">GW</span><span class="asset-content"><strong>IEC 104 gateway</strong><small>MMS to IEC 104 monitoring</small><span class="asset-status" data-status="gateway">Checking page…</span></span><span class="external" aria-hidden="true">↗</span></a>
+          <a class="asset" data-asset="dnp3Gateway" target="_blank" rel="noopener noreferrer"><span class="asset-symbol" aria-hidden="true">GW</span><span class="asset-content"><strong>DNP3 gateway</strong><small>Optional MMS to DNP3 monitoring</small><span class="asset-status" data-status="dnp3Gateway">Checking page…</span></span><span class="external" aria-hidden="true">↗</span></a>
+          <div class="asset asset-static"><span class="asset-symbol muted-symbol" aria-hidden="true">PTP</span><span class="asset-content"><strong>Station clock</strong><small>GNSS reference and PTP model</small><span class="asset-status">Planned · no page</span></span></div>
+        </div>
+      </section>
+      <div class="network-band station-band"><span class="network-line"></span><strong>STATION BUS</strong><span>MMS indications &amp; control / GOOSE trip</span></div>
+      <section class="level" aria-labelledby="bay-heading">
+        <div class="level-heading"><span>03</span><div><h3 id="bay-heading">Bay level</h3><p>Independent protection and breaker-control IEDs</p></div></div>
+        <div class="asset-grid">
+          <a class="asset" data-asset="protection" target="_blank" rel="noopener noreferrer"><span class="asset-symbol relay-symbol" aria-hidden="true">PR</span><span class="asset-content"><strong>PRF01 <em>Protection</em></strong><small>Feeder current and trip latch</small><span class="asset-status" data-status="protection">Checking page…</span></span><span class="external" aria-hidden="true">↗</span></a>
+          <a class="asset" data-asset="breaker" target="_blank" rel="noopener noreferrer"><span class="asset-symbol relay-symbol" aria-hidden="true">BR</span><span class="asset-content"><strong>BRF01 <em>Breaker control</em></strong><small>Interlocks and contact feedback</small><span class="asset-status" data-status="breaker">Checking page…</span></span><span class="external" aria-hidden="true">↗</span></a>
+          <div class="asset asset-static"><span class="asset-symbol muted-symbol" aria-hidden="true">PC</span><span class="asset-content"><strong>Combined IED</strong><small>Alternative development profile</small><span class="asset-status">No standalone page</span></span></div>
+        </div>
+      </section>
+      <div class="network-band process-band"><span class="network-line"></span><strong>PROCESS NETWORK</strong><span>Plant MMS / experimental SV profile</span></div>
+      <section class="level" aria-labelledby="process-heading">
+        <div class="level-heading"><span>04</span><div><h3 id="process-heading">Process level</h3><p>Simulated feeder, breaker mechanism and measurement</p></div></div>
+        <div class="asset-grid">
+          <a class="asset" data-asset="plant" target="_blank" rel="noopener noreferrer"><span class="asset-symbol" aria-hidden="true">SIM</span><span class="asset-content"><strong>SIMF01 <em>Process simulator</em></strong><small>Plant model and breaker contacts</small><span class="asset-status" data-status="plant">Checking page…</span></span><span class="external" aria-hidden="true">↗</span></a>
+          <a class="asset" data-asset="plant" data-path="/yard/" target="_blank" rel="noopener noreferrer"><span class="asset-symbol" aria-hidden="true">52</span><span class="asset-content"><strong>52-F01 <em>3D yard</em></strong><small>Breaker mechanism and process view</small><span class="asset-status" data-status="plant">Checking page…</span></span><span class="external" aria-hidden="true">↗</span></a>
+          <a class="asset" data-asset="merging" target="_blank" rel="noopener noreferrer"><span class="asset-symbol" aria-hidden="true">MU</span><span class="asset-content"><strong>MUF01 <em>Merging unit</em></strong><small>Experimental SV publisher</small><span class="asset-status" data-status="merging">Checking page…</span></span><span class="external" aria-hidden="true">↗</span></a>
+        </div>
+      </section>
+      <div class="architecture-foot">Logical networks are shown for orientation; lines do not indicate live traffic or redundancy.</div>
+    </div>
+
+    <aside class="lab-sidebar" aria-label="Lab context">
+      <section class="side-panel" aria-labelledby="capture-heading">
+        <div class="side-title"><h2 id="capture-heading">Packet capture</h2><span>PCAP</span></div>
+        <div class="side-body capture-controls">
+          <p>Capture endpoint interfaces for one network or the lab. Endpoint captures can overlap and are not a complete network tap.</p>
+          <p><a id="capture-overview-link" hidden>Open capture-enabled overview</a> <span id="capture-overview-note">Checking the configured capture agent…</span></p>
+          <label for="capture-scope">Capture scope</label>
+          <select id="capture-scope"><option value="lab">All lab networks</option><option value="network">One network</option><option value="interface">One interface</option></select>
+          <label for="capture-target">Network or interface</label>
+          <select id="capture-target" disabled><option value="">All available networks</option></select>
+          <label for="capture-duration">Maximum duration</label>
+          <select id="capture-duration"><option value="10">10 seconds</option><option value="30" selected>30 seconds</option><option value="60">60 seconds</option></select>
+          <div class="capture-actions"><button type="button" id="capture-refresh">Refresh interfaces</button><button type="button" id="capture-start" disabled>Start capture</button><button type="button" id="capture-stop" disabled>Stop</button></div>
+          <p id="capture-status" role="status" aria-live="polite">Checking capture agent…</p>
+          <ul id="capture-files" aria-label="Capture downloads"></ul>
+          <p>For a fresh MMS read of the trip in a disposable direct-HTTP project: establish CLOSED, GOOD and trip clear with 120 A renewing. With default 200 A pickup, select all lab networks for MMS, GOOSE and IEC 104, then start a 60-second capture. In the station page set the slider to 250 A and choose Apply slider value. Keep that page open and the input lease active; wait for 250 A, asserted trip and OPEN/GOOD. While holding 250 A and capture is running, have the instructor run the read-only command below on the Docker host. Afterwards apply 120 A and stop the capture. Do not use the automatic sequence: it returns to 120 A after three seconds. Do not restart a captured container.</p>
+          <p>Inspect station-hmi / station for MMS, breaker / station for GOOSE and control-centre / supervisory for IEC 104. A single station interface may miss GOOSE and cannot establish supervisory-network coverage.</p>
+          <p id="capture-mms-command">The command appears when a capture includes the station-hmi station interface.</p>
+          <p>For MMS in Wireshark, Decode As TPKT on TCP ports 8102–8104. A separate station-hmi read creates the association; it does not restart the HMI reader. Check the individual capture and manifest for errors and drops.</p>
+          <p>Maximum 10,000 packets per interface. Capture adds load and may affect timing. Files can contain sensitive traffic and are retained on the host.</p>
+        </div>
+      </section>
+      <section class="side-panel">
+        <div class="side-title"><h2>Input profile</h2><span>PRF01</span></div>
+        <div class="side-body"><strong id="input-mode">Loading configuration…</strong><p id="input-description">The input source will appear when configuration is available.</p></div>
+      </section>
+      <section class="side-panel">
+        <div class="side-title"><h2>Protection path</h2><span>F01</span></div>
+        <ol class="path-list">
+          <li><b>01</b><div><strong>Measure</strong><span>PRF01 evaluates feeder current.</span></div></li>
+          <li><b>02</b><div><strong>Trip</strong><span>PRF01 sends GOOSE to BRF01.</span></div></li>
+          <li><b>03</b><div><strong>Operate</strong><span>BRF01 requests breaker operation.</span></div></li>
+          <li><b>04</b><div><strong>Confirm</strong><span>BRF01 derives position from contacts and reports it over MMS.</span></div></li>
+        </ol>
+      </section>
+      <section class="side-panel">
+        <div class="side-title"><h2>Bay indications</h2><span>MMS</span></div>
+        <div class="side-body"><p class="reader-status" id="reader-status">Waiting for station reader</p>
+          <dl class="overview-readings"><div><dt>Breaker position</dt><dd id="reading-position">—</dd></div><div><dt>Protection trip</dt><dd id="reading-trip">—</dd></div><div><dt>Phase A current</dt><dd id="reading-current">—</dd></div></dl>
+          <p>Position: BRF01 contacts via MMS. Trip and current: PRF01 via MMS. Each value includes its source timestamp; an old timestamp alone does not mean stale data.</p>
+        </div>
+      </section>
+      <section class="side-panel">
+        <div class="side-title"><h2>Reading this page</h2><span>LEGEND</span></div>
+        <div class="side-body legend-copy"><p><span class="legend-dot"></span> Service endpoint reachable from the HMI container; not a page, protocol-health or host-port test.</p><p><span class="legend-dot unavailable"></span> Service endpoint unavailable or optional service not running.</p><p>Clock / PTP and engineered breaker I/O remain planned. This map is a training model, not a conformance claim.</p><p id="check-time" role="status">Endpoint checks pending.</p></div>
+      </section>
+    </aside>
+  </div>
+</main>
+</body>
+</html>

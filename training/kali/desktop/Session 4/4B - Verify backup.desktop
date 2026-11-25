@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=4B - Verify backup
+Exec=/bin/bash /opt/ss01/practicals/activity.sh 4B
+Terminal=true
+Icon=utilities-terminal

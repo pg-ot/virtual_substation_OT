@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=3B - Secure path
+Exec=/bin/bash /opt/ss01/practicals/activity.sh 3B
+Terminal=true
+Icon=utilities-terminal

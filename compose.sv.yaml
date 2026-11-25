@@ -1,0 +1,58 @@
+# F01 Sampled Values training profile.
+services:
+  station-hmi:
+    environment:
+      LAB_OVERVIEW_INPUT_MODE: "sv"
+
+  merging-unit:
+    image: ss01-bench:dev
+    pull_policy: never
+    init: true
+    read_only: true
+    user: "0:0"
+    cap_drop: [ALL]
+    cap_add: [NET_RAW]
+    security_opt: [no-new-privileges:true]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    command: [node, src/component-service.mjs, merging-unit]
+    depends_on:
+      plant:
+        condition: service_healthy
+    environment:
+      LAB_DISTRIBUTED: "1"
+      LAB_PROCESS_MODEL: "1"
+      LAB_BIND_NAME: mu-process
+      LAB_PLANT_MMS_HOST: plant-process
+      LAB_WEB_BIND_NAME: web-merging-unit
+      LAB_SV_SAMPLES_PER_SECOND: "${LAB_SV_SAMPLES_PER_SECOND:-400}"
+      # Experimental mitigation only; grouping does not guarantee continuity.
+      LAB_SV_ASDUS_PER_FRAME: "${LAB_SV_ASDUS_PER_FRAME:-4}"
+    networks:
+      process:
+        aliases: [mu-process]
+      management:
+        aliases: [web-merging-unit]
+    ports:
+      - "127.0.0.1:${LAB_MERGING_WEB_PORT:-8088}:8090"
+    healthcheck:
+      interval: 3s
+      timeout: 4s
+      retries: 5
+      start_period: 3s
+      test: [CMD, node, -e, "fetch('http://'+process.env.LAB_WEB_BIND_NAME+':8090/state').then(r=>r.json()).then(s=>{if(s.link!=='PUBLISHING SV')process.exitCode=1}).catch(()=>{process.exitCode=1})"]
+
+  protection:
+    depends_on:
+      merging-unit:
+        condition: service_healthy
+    environment:
+      LAB_SV_PROCESS: "1"
+      LAB_SV_BIND_NAME: relay-process
+      LAB_SV_SAMPLES_PER_SECOND: "${LAB_SV_SAMPLES_PER_SECOND:-400}"
+    networks:
+      process:
+        aliases: [relay-process]

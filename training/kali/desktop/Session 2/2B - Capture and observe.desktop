@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=2B - Capture and observe
+Exec=/bin/bash /opt/ss01/practicals/activity.sh 2B
+Terminal=true
+Icon=utilities-terminal

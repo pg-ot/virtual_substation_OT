@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=3A - Access request
+Exec=/bin/bash /opt/ss01/practicals/activity.sh 3A
+Terminal=true
+Icon=utilities-terminal

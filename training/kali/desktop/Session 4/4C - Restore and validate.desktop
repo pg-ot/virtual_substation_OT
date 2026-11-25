@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=4C - Restore and validate
+Exec=/bin/bash /opt/ss01/practicals/activity.sh 4C
+Terminal=true
+Icon=utilities-terminal

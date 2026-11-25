@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=2D - Inspect MMS
+Exec=/bin/bash /opt/ss01/practicals/activity.sh 2D
+Terminal=true
+Icon=utilities-terminal

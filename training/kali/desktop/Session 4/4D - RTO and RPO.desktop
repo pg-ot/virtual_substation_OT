@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=4D - RTO and RPO
+Exec=/bin/bash /opt/ss01/practicals/activity.sh 4D
+Terminal=true
+Icon=utilities-terminal

@@ -1,0 +1,20 @@
+services:
+  plant:
+    environment:
+      LAB_YARD_INPUT_MODE: "http"
+      LAB_YARD_STATION_PORT: "${LAB_HMI_PORT:-8080}"
+
+  protection:
+    environment:
+      LAB_HTTP_PROCESS_INPUT: "1"
+      LAB_SV_PROCESS: "0"
+      LAB_PROCESS_INPUT_HOST: "127.0.0.1:${LAB_PROTECTION_WEB_PORT:-8082}"
+      LAB_PROCESS_INPUT_ALLOWED_ORIGINS: "http://127.0.0.1:${LAB_HMI_PORT:-8080},http://localhost:${LAB_HMI_PORT:-8080}"
+      LAB_PROCESS_INPUT_STATION_HOST: "web-station-hmi"
+
+  station-hmi:
+    environment:
+      LAB_PROCESS_INPUT_URL: "http://127.0.0.1:${LAB_PROTECTION_WEB_PORT:-8082}/process-input"
+      LAB_PROCESS_INPUT_INTERNAL: "1"
+      LAB_PROTECTION_PICKUP_A: "${LAB_PROTECTION_PICKUP_A:-200}"
+      LAB_OVERVIEW_INPUT_MODE: "http"

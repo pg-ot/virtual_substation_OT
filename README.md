@@ -1,160 +1,97 @@
-# Virtual Substation - IEC 61850 GOOSE Communication System
+# Virtual Substation OT
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Platform](https://img.shields.io/badge/Platform-Linux-blue.svg)](https://www.linux.org/)
-[![IEC 61850](https://img.shields.io/badge/Standard-IEC%2061850-green.svg)](https://en.wikipedia.org/wiki/IEC_61850)
+SS-01 is an isolated **training simulation**, not an industrial protection
+device or a standards-conformance claim. Separate simulated plant, protection
+and breaker IED processes exchange native protocol traffic. PRF01 sends trip
+to BRF01 over GOOSE; contact-confirmed breaker position returns to the station
+and gateways over MMS. There is no reverse breaker-position GOOSE today.
 
-A complete virtual substation implementation demonstrating IEC 61850 GOOSE (Generic Object Oriented Substation Event) communication between Protection IED and Breaker IED using libiec61850 library. The environment is intentionally self-contained so that control engineers and OT security teams can explore how GOOSE behaves, how permissions impact data sharing, and how adversarial conditions might disrupt coordination without touching production infrastructure.
+The [as-built reference](docs/as-built.md) distinguishes the repository's
+implemented profiles from a dated running-deployment snapshot. The
+[lab overview](http://127.0.0.1:8080/lab-overview) is available when a
+compatible station HMI is running on the default port. Other projects may use
+different ports. For capture controls without interrupting an existing HMI,
+start the [host capture agent](docs/container-bench.md#packet-capture-from-the-lab-overview)
+and use its separate overview.
 
-> ⚠️ **Disclaimer**
->
-> This repository is intended for educational experimentation only. The included publisher and subscriber do **not** produce or consume IEC 61850-compliant GOOSE datasets, the configuration revision embedded in the messages diverges from the provided SCL model, and the default heartbeat interval conflicts with the advertised `TimeAllowedToLive`. Do not rely on this code for standards-compliant interoperability or any safety-critical application without substantial rework of the data model and implementation.
+## Documentation: what belongs where
 
-## 🚀 Quick Start
+| Information needed | Where to find or record it |
+|---|---|
+| Current implemented devices, signal ownership, protocol paths, settings, point mappings, limitations and a dated deployment snapshot | [As-built reference](docs/as-built.md). Update it when implementation or the documented deployment changes; distinguish source from a verified running image. |
+| Station, bay, process and supervisory topology, alternatives and network boundaries | [Architecture](docs/ss01-architecture.md). Label implemented, experimental and planned paths separately. |
+| Startup, ports, profile selection, operation, captures and safe isolation | [Container runbook](docs/container-bench.md); native-only commands and settings are in [native build and operations](native/README.md). Record the project, overlays and port overrides used. |
+| Engineered data model, GOOSE dataset/address/revision and runtime configuration | Versioned [feeder CID](native/feeder.cid), Compose files and the as-built reference. Record changes to dataset order or revision and the matching publisher/subscriber configuration. |
+| Protocol editions, roles, optional services, point maps and interoperability requirements | [Device profiles and release criteria](specs/001-feeder/protocol-profiles.md), with implemented mappings in the [as-built reference](docs/as-built.md). Record unsupported functions and do not treat target profiles as certification. |
+| Test cases, results, captures, build identity, topology, dates, failures and limitations | [Scenario test cases](docs/scenario-test-cases.md), [latest isolated run](outputs/scenario-validation-20261123/report.md), [technical validation](docs/f01-technical-validation.md) and dated [evidence reports](outputs/iec61850-implementation-validation.md). Keep historical observations intact; add new evidence with its own scope and links. |
+| Open IEC 61850 acceptance work | [Implementation checklist](docs/iec61850-implementation-checklist.md) and [GOOSE run sheet](specs/001-feeder/p1-linux-run.md). Mark a test complete only with evidence for the stated scope. |
+| Training scenarios and instructor instructions | [Direct-HTTP pilot guide](docs/training-direct-http-pilot.md), [instructor guide](docs/training-f01-instructor-guide.md) and [scenario guide](docs/instructor-scenarios.md). Select the correct measurement profile; record prerequisites and expected feedback separately from commands. |
+| Trainee practical worksheets for all four sessions | [Practical workbook PDF](outputs/SS-01-practical-workbook.pdf) or [editable Word version](outputs/SS-01-practical-workbook.docx). Instructors should rehearse the selected profiles and provide project-specific addresses. |
+| Kali desktop activities for all four sessions | [Kali student practicals](docs/container-bench.md#student-practicals-on-the-kali-desktop), including capture analysis and backup hash verification. Instructor operations remain separate. |
+| Session flow, preflight, timings and answer guidance | [Four-session facilitator guide](docs/training-facilitator.md). Perform the human trainee rehearsal and document sign-off before release. |
+| Revised presentations aligned with the practicals | [Session 1: IEC 62443](outputs/SS-01-Session-1-aligned.pptx) · [Session 2: protocol analysis](outputs/SS-01-Session-2-aligned.pptx) · [Session 3: secure access](outputs/SS-01-Session-3-aligned.pptx) · [Session 4: recovery](outputs/SS-01-Session-4-aligned.pptx). Original presentations are unchanged. |
+| Optional VPN and jump-host exercise, configuration, session controls and security boundaries | [Secure remote access training pilot](docs/training-secure-remote-access.md). This local container-to-container demonstration is off by default and does not protect the existing direct lab interfaces. |
+| IEC 104 configuration fault, hash-verified restore and RTO/RPO / 3-2-1 teaching | [Resilience and recovery exercise](docs/training-resilience-recovery.md). Use a separate disposable project; control requires a separate authorized test, and historical data is not backed up. |
+| Design rationale, proposed work and future acceptance | [ADRs](docs/adr/README.md), [architecture plan](specs/001-feeder/full-architecture-plan.md) and [low-level design](specs/001-feeder/low-level-design.md). Treat proposals as targets, not as-built facts. |
+
+Never put passwords, credentials or sensitive captures in these documents.
+Document the evidence location and access procedure without publishing secrets.
+
+## Run the containerized bench
+
+The [Docker Compose guide](docs/container-bench.md) starts the process simulator, bay IEDs, station HMI, and IEC 104 supervisory pair as separate containers. It also covers the optional DNP3 pair and the successful-trip and failed-breaker exercises.
+
+## Build and run
+
+Use a C/C++17 compiler, CMake 3.24 or later, OpenJDK and Node.js 20 or later. On Linux, build with:
 
 ```bash
-git clone https://github.com/pg-ot/virtual-substation.git
-cd virtual-substation
 ./install.sh
-
-# Terminal 1 - Protection IED
-sudo ./start_protection.sh eth0
-
-# Terminal 2 - Breaker IED  
-sudo ./start_breaker.sh eth1
-
-# Stop all
-./stop_all.sh
+node native/smoke.mjs build-native --dnp3
+node native/console-smoke.mjs build-native
 ```
 
-## Project Overview
+For the GOOSE exercise, use an isolated station Ethernet interface on Linux. The native processes need raw Ethernet permission on their selected interface. Launch each console in its own terminal as an unprivileged user with the required capability granted to the native binary by the lab administrator.
 
-This project simulates a simplified substation protection system where:
-- **Protection IED** detects faults and sends trip/close commands via GOOSE messages
-- **Breaker IED** receives commands and operates the circuit breaker accordingly
-- Communication follows IEC 61850-8-1 standard with proper timing sequences
-- Communication mimics IEC 61850-8-1 messaging for demonstration purposes only, but the setup is also suited to OT security exercises such as practicing traffic capture/analysis, evaluating least-privilege boundaries, and rehearsing incident response playbooks for misbehaving IEDs.
-
-## System Architecture
-
-```
-┌─────────────────┐    GOOSE Messages    ┌─────────────────┐
-│  Protection IED │ ──────────────────► │   Breaker IED   │
-│   (Publisher)   │   Ethernet/VLAN     │  (Subscriber)   │
-│                 │                     │                 │
-│ • Fault Detection│                     │ • Trip/Close    │
-│ • Trip Commands │                     │ • Status Display│
-│ • Measurements  │                     │ • Breaker Ctrl  │
-└─────────────────┘                     └─────────────────┘
-```
-
-## GOOSE Message Content
-
-The protection system transmits the following data:
-
-| Data Point | Type | Description | Example |
-|------------|------|-------------|----------|
-| Trip Command | Boolean | Circuit breaker trip signal | true/false |
-| Close Command | Boolean | Circuit breaker close signal | true/false |
-| Fault Type | Integer | 0=No Fault, 1=Overcurrent, 2=Differential, 3=Distance | 0 |
-| Protection Element | Integer | IEEE device number (e.g., 50, 87, 21) | 50 |
-| Fault Current | Float | Measured fault current in Amperes | 1250.5 |
-@@ -105,63 +109,70 @@ sudo ./goose_publisher_example <interface>
 ```bash
-ip link show  # List all interfaces
-# Common: eth0, enp0s3, enp0s8, wlan0
+./start_protection.sh <publisher-station-interface>
+./start_breaker.sh <subscriber-station-interface>
 ```
 
-## GUI Features
+| Console | Address | Data path |
+|---|---|---|
+| Protection IED | http://127.0.0.1:8211/ | An MMS client reads the live feeder IED. Instructor actions go to the IED process. |
+| Breaker IED | http://127.0.0.1:8212/ | BRF01 exposes received GOOSE and separately publishes its own breaker position over MMS. |
+| Station HMI | http://127.0.0.1:8080/ | An independent native MMS client reads BRF01 position and PRF01 trip and current. |
 
-### Protection IED GUI (Publisher)
-- **Trip/Close Commands:** Toggle switches for breaker control
-- **Fault Configuration:** Dropdown for fault types (No Fault/Overcurrent/Differential/Distance)
-- **Live Measurements:** Color-coded sliders for Current (0-5000A), Voltage (0-15kV), Frequency (45-55Hz)
-  - **Green:** Normal operating range
-  - **Yellow:** Abnormal but non-tripping range  
-  - **Red:** Fault range that triggers protection
-- **Protection Logic:** Automatic fault detection and trip commands
-- **Real-time Publishing:** Dynamic GOOSE message generation based on GUI inputs
-- **Auto-start:** Automatically begins publishing when launched by start script
+Use `./start_protection.sh -` for the MMS-only console. On Windows use `node src/native-device-console.mjs protection - <build-directory>`. Stop each launcher with Ctrl+C. The console and its child process can be stopped separately from the other device.
 
-### Breaker IED GUI (Subscriber)
-- **Command Display:** Visual indicators for received Trip/Close commands
-- **Breaker Status:** Animated breaker position (Open/Closed)
-- **Fault Information:** Real-time display of fault type and protection element
-- **Measurements:** Live display of current, voltage, and frequency
-- **Connection Status:** Timestamp of last received message
+Set `LAB_CONSOLE_PORT` for an alternate console binding. The native protocol ports can also be overridden for local tests.
 
-## IEC 61850 Compliance Notes
+### Read-only station HMI
 
-Although the project draws on libiec61850 and exchanges GOOSE frames, several aspects intentionally diverge from the IEC 61850-8-1 standard and the provided SCL configuration:
+Start both IEDs using the [distributed breaker exercise](native/README.md#distributed-breaker-exercise), then run:
 
-- **Dataset structure mismatch:** The publisher encodes a seven-element mix of boolean, integer, and float values, whereas the SCL `AnalogValues` dataset models four `MV` measurements that include magnitude, quality, and timestamp members. Standards-compliant subscribers will therefore reject these messages.
-- **Configuration revision inconsistency:** The hard-coded `GoCBRef` advertises `ConfRev=1`, but the SCL model defines `confRev="2"`, causing compliant clients to treat the traffic as stale.
-- **Heartbeat timing conflict:** The idle retransmission interval is 1000 ms even though `TimeAllowedToLive` is set to 500 ms, so conforming subscribers will flag the messages as expired mid-cycle.
-
-Any deployment that requires interoperability with other IEC 61850 equipment must reconcile these discrepancies (for example by updating the SCL model, adjusting the publisher/subscriber payloads, and aligning retransmission timing) before attempting integration.
-
-## OT Security Use Cases
-
-### GOOSE Timing (IEC 61850-8-1)
-- **Fast Retransmission:** 4ms intervals for first 3 messages after state change
-- **Stabilization:** 100ms intervals for next few messages
-- **Heartbeat:** 1000ms intervals during normal operation
-- **Time to Live:** 500ms for message validity
-While the data model is simplified, the project offers a convenient sandbox for cyber-physical security research and training:
-
-### Network Configuration
-- **Application ID:** 1000 (Protection)
-- **Destination MAC:** 01:0c:cd:01:00:01 (GOOSE multicast)
-- **VLAN Priority:** 4 (High priority for protection)
-- **VLAN ID:** 0 (Untagged)
-- **Traffic analysis practice:** Capture and dissect GOOSE frames to understand how control signals appear on the wire, how configuration revisions manifest, and where deviations from the SCL model surface.
-- **Attack simulation:** Experiment with intentionally malformed datasets, delayed heartbeats, or tampered shared files to observe how the system reacts and to craft defensive monitoring rules.
-- **Incident response tabletop exercises:** Use the GUIs and launcher scripts to rehearse detection and recovery procedures that map to OT playbooks without risking real equipment.
-
-These OT-focused activities complement the electrical engineering perspective, making the repository useful for blue-team training, security research, and demonstrations of how process control software can fail under adversarial conditions.
-
-## System Requirements
-
-- **Operating System:** Linux (Ubuntu/Debian recommended)
-- **Privileges:** Root access for raw socket operations
-- **Python:** Python 3.x with tkinter for GUI
-- **Network:** Ethernet interface for GOOSE communication
-- **Compiler:** GCC for building libiec61850 examples
-
-## 📦 Installation
-
-### Automatic Installation (Recommended)
-```bash
-git clone https://github.com/yourusername/virtual-substation.git
-cd virtual-substation
-./install.sh
+```text
+node src/serve.mjs --native build-native
+node native/station-hmi-smoke.mjs build-native
 ```
-@@ -193,26 +204,36 @@ ip link show       # List network interfaces
-## Troubleshooting
 
-| Issue | Solution |
-|-------|----------|
-| Permission denied | Run with `sudo` |
-| Interface not found | Check `ip link show` and use correct interface |
-| GUI compilation error | Ensure libiec61850 is built: `cd libiec61850 && make lib` |
-| No GOOSE communication | Verify both devices use same network |
-| Python GUI not starting | Install tkinter: `sudo apt install python3-tk` |
+Run the smoke test separately from the live exercise, or give it separate MMS ports. Set `PORT` for an alternate HMI HTTP port. Match `LAB_MMS_PORT` and `LAB_BREAKER_MMS_PORT` to the running IEDs. The station displays source timestamps and per-point quality. Its event table records changes observed by the station poller.
 
-## Educational Context
+### Exercise
 
-This project demonstrates:
-- **IEC 61850 Standard:** International standard for substation automation
-- **GOOSE Protocol:** Fast, reliable communication for protection systems
-- **Virtual IEDs:** Software simulation of Intelligent Electronic Devices
-- **Protection Logic:** Fault detection and circuit breaker control
-- **Real-time Systems:** Time-critical communication in power systems
+1. Open both consoles. Verify confirmed CLOSED over MMS and LIVE GOOSE indications at the peer.
+2. Apply a fault in the protection console. Observe the OPEN confirmation over MMS and the state change at the GOOSE peer. Heartbeat retransmissions update the sequence number and last receipt without creating a new state event.
+3. Stop the publisher. The peer retains the last received values and marks them STALE when their lifetime expires.
 
-## Use Cases
+The breaker console shows the received GOOSE trip alongside BRF01's confirmed position. Isolated Linux GOOSE and MMS feedback exercises have been observed; full timing, independent interoperability and conformance remain open. See the [as-built reference](docs/as-built.md) and [ADR 0016](docs/adr/0016-full-feeder-bay.md).
 
-- **Training:** Learn IEC 61850 and substation automation concepts
-- **Testing:** Validate protection logic and communication timing
-- **Development:** Prototype new protection algorithms
-- **Education:** Understand power system protection principles
-- **Research:** Experiment with GOOSE message structures and timing
+## Other layers
+
+- [Full architecture implementation plan](specs/001-feeder/full-architecture-plan.md) maps the reference diagram to build phases, interfaces and acceptance tests.
+
+- [Native device build](native/README.md) documents the independent MMS client, IEC 104 gateway and master, and DNP3 outstation and master. The distributed supervisory variants read position from BRF01 and protection and current from PRF01.
+- [Feature tasks](specs/001-feeder/tasks.md) and [ADRs](docs/adr/README.md) track pending browser connections, station configuration and independent interoperability.
+- `station-hmi.html` is the offline classroom prototype. The new protection and breaker consoles connect to the running processes.
+- The reference Tkinter source and bundled examples remain in the repository for comparison. The supported launchers use the pinned native build and the new console paths.

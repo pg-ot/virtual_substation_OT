@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SS-01 · Substation Lab</title>
+<link rel="stylesheet" href="/station.css">
+<script type="module" src="/station.mjs"></script>
+</head>
+<body>
+<header><strong>SUBSTATION LAB</strong><span>SS-01 / 11 kV / FEEDER F01</span><span class="training">LOCAL SIMULATION</span></header>
+<nav class="lab-nav" aria-label="Lab views">
+  <a href="#station" aria-current="page">Station HMI</a>
+  <a href="#yard">Switchyard</a>
+  <a href="#ied">Feeder IED</a>
+  <a href="#gateway">Gateway</a>
+  <a href="#control-centre">Control centre</a>
+  <a href="#instructor">Instructor</a>
+</nav>
+<main>
+<div class="workspace" data-screen="station">
+  <section aria-labelledby="diagram-title">
+    <h2 id="diagram-title">Station single-line</h2>
+    <div class="drawing">
+      <canvas id="sld" width="630" height="310" aria-label="11 kV bus connected through breaker 52-F01 and a current transformer to feeder F01"></canvas>
+    </div>
+    <table aria-label="Station signals"><thead><tr><th>Point</th><th>Indication</th><th>Quality</th></tr></thead>
+    <tbody><tr><td>52-F01 position</td><td id="local-position"></td><td>LIVE</td></tr>
+    <tr><td>Feeder current</td><td id="local-current"></td><td>LIVE</td></tr></tbody></table>
+  </section>
+  <section aria-labelledby="relay-title">
+    <h2 id="relay-title">Bay controls</h2>
+    <table aria-label="Station control status"><tbody>
+      <tr><th scope="row">Control authority</th><td id="station-authority"></td></tr>
+      <tr><th scope="row">Trip latch</th><td id="station-trip"></td></tr>
+    </tbody></table>
+    <div class="keys"><button data-origin="local" data-action="open">OPEN</button><button data-origin="local" data-action="close">CLOSE</button></div>
+  </section>
+</div>
+<section class="yard" data-screen="yard" hidden>
+  <h2>Switchyard</h2>
+  <div class="keys" aria-label="Switchyard viewpoints">
+    <button data-view="overview" aria-pressed="true">Overview</button>
+    <button data-view="breaker" aria-pressed="false">Breaker 52-F01</button>
+    <button data-view="relay" aria-pressed="false">Relay cabinet</button>
+  </div>
+  <canvas id="yard" width="780" height="340"></canvas>
+</section>
+<section class="device-screen" data-screen="ied" hidden>
+    <h2>Protection IED</h2>
+    <h2 id="relay-title">Feeder protection IED</h2>
+    <div class="relay">
+      <div class="relay-tag">PR-F01 <span>FEEDER RELAY</span></div>
+      <div class="lamps"><span><i class="lamp ready"></i> READY</span><span><i class="lamp" id="trip-lamp"></i> TRIP</span></div>
+      <dl class="lcd"><dt>52-F01</dt><dd id="relay-position"></dd><dt>AUTHORITY</dt><dd id="authority"></dd><dt>TRIP LATCH</dt><dd id="trip-text"></dd></dl>
+      <div class="keys"><button data-origin="local" data-action="open">OPEN</button><button data-origin="local" data-action="close">CLOSE</button><button data-origin="local" data-action="reset">RESET TRIP</button></div>
+    </div>
+</section>
+<section data-screen="gateway" hidden>
+  <h2>Station gateway · GW-01</h2>
+  <table aria-label="Gateway diagnostics"><tbody>
+    <tr><th scope="row">Supervisory link</th><td id="gateway-link"></td></tr>
+    <tr><th scope="row">Forwarded sample quality</th><td id="gateway-quality"></td></tr>
+    <tr><th scope="row">Last forwarded source time</th><td id="gateway-time"></td></tr>
+  </tbody></table>
+  <h2>Forwarded points</h2>
+  <table aria-label="Simulated point map"><thead><tr><th scope="col">Source point</th><th scope="col">Supervisory indication</th><th scope="col">Last forwarded value</th></tr></thead>
+  <tbody>
+    <tr><td>PR-F01 / 52-F01 position</td><td>Breaker position</td><td id="gateway-position"></td></tr>
+    <tr><td>PR-F01 / feeder current</td><td>Feeder current</td><td id="gateway-current"></td></tr>
+    <tr><td>PR-F01 / protection trip</td><td>Trip latch</td><td id="gateway-trip"></td></tr>
+  </tbody></table>
+</section>
+<section data-screen="control-centre" hidden>
+    <h2>Control centre · SS-01</h2>
+    <table aria-label="Supervisory snapshot"><tbody>
+      <tr><th scope="row">Position</th><td id="remote-position"></td></tr>
+      <tr><th scope="row">Feeder current</th><td id="remote-current"></td></tr>
+      <tr><th scope="row">Trip latch</th><td id="remote-trip"></td></tr>
+      <tr><th scope="row">Quality</th><td id="quality"></td></tr>
+      <tr><th scope="row">Source time (sim.)</th><td id="sample-time"></td></tr>
+    </tbody></table>
+    <div class="keys remote"><button data-origin="remote" data-action="open">OPEN</button><button data-origin="remote" data-action="close">CLOSE</button></div>
+</section>
+<section class="instructor" data-screen="instructor" hidden>
+  <h2>Instructor controls</h2>
+  <div class="keys"><button id="fault">Apply fault</button><button id="link">Drop WAN</button><button id="mode">Select remote</button><button id="reset">Reset exercise</button></div>
+</section>
+<section class="events" aria-labelledby="events-title">
+  <h2 id="events-title">Sequence of events</h2>
+  <div class="event-scroll"><table><thead><tr><th>Sim. time</th><th>Source</th><th>Event</th><th>Result</th></tr></thead><tbody id="events"></tbody></table></div>
+</section>
+</main>
+<footer><span>SS-01</span><span id="wan-status"></span><span id="operation" role="status"></span></footer>
+<dialog id="confirm"><form method="dialog"><h2>Confirm operation</h2><p id="confirm-text"></p><div class="keys"><button value="cancel" autofocus>Cancel</button><button value="accept">Execute</button></div></form></dialog>
+</body>
+</html>
