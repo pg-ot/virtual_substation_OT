@@ -14,6 +14,47 @@ different ports. For capture controls without interrupting an existing HMI,
 start the [host capture agent](docs/container-bench.md#packet-capture-from-the-lab-overview)
 and use its separate overview.
 
+## Architecture
+
+SS-01 models one 33/11 kV substation with a single 11 kV outgoing feeder bay (F01), as independent processes that talk over the real protocols rather than one simulator standing in for everything:
+
+```mermaid
+flowchart LR
+  SIM["SIMF01 plant + yard<br/>MMS server"]
+  PR["PRF01 protection<br/>MMS server"]
+  BR["BRF01 breaker<br/>MMS server"]
+  HMI["Station HMI<br/>independent MMS client"]
+  IEC["IEC 104 gateway"]
+  DNP["DNP3 outstation (optional)"]
+  CC1["IEC 104 control centre"]
+  CC2["DNP3 master (optional)"]
+  SIM -->|"Process MMS: current, fault, contacts"| PR
+  SIM -->|"52a/52b + fault feedback"| BR
+  PR -->|"Layer 2 GOOSE trip"| BR
+  PR -->|"Trip + current"| HMI
+  BR -->|"Position + MMS OPEN/CLOSE"| HMI
+  PR --> IEC
+  BR --> IEC
+  PR -.-> DNP
+  BR -.-> DNP
+  IEC -->|"IEC 104 monitoring + supervised control"| CC1
+  DNP -.->|"DNP3 monitoring"| CC2
+```
+
+| Component | Role | Protocol it speaks |
+|---|---|---|
+| SIMF01 | Numerical feeder and breaker mechanism; owns 52a/52b contacts and process fault state | MMS server |
+| PRF01 | Feeder protection: evaluates phase-A current, latches trip | MMS server, GOOSE publisher |
+| BRF01 | Breaker control: receives the GOOSE trip, drives the breaker, confirms position from contacts | GOOSE subscriber, MMS client (to SIMF01), MMS server |
+| Station HMI | Single-line, control, events | Independent MMS client |
+| Gateway | MMS-to-IEC 104 (and optional DNP3) bridge | MMS client, IEC 104/DNP3 server |
+| Control centre | Remote monitoring and supervised switching | IEC 104/DNP3 master |
+| Kali (optional) | Attacker/analysis workstation for the security-training exercises | Supervisory network only |
+
+**The sequence that matters most**: PRF01 evaluates current -> on overcurrent it latches a trip and publishes it over **GOOSE** -> BRF01 accepts the trip and operates the breaker -> BRF01's contact-derived position and PRF01's trip both flow back over **MMS** to the station HMI and gateway -> the gateway republishes over **IEC 104** (monitoring and supervised control) and optionally **DNP3** (monitoring only) to a remote control centre. Closing is blocked at BRF01 itself, not just in the UI, while the trip is asserted or current is above pickup; both PRF01's trip latch and BRF01's close-inhibit latch need an explicit reset before a close is accepted.
+
+See [docs/ss01-architecture.md](docs/ss01-architecture.md) for the complete target architecture, including planned and experimental process-bus paths, and the full signal-ownership table.
+
 ## Documentation: what belongs where
 
 | Information needed | Where to find or record it |
@@ -45,17 +86,76 @@ Document the evidence location and access procedure without publishing secrets.
 
 Tries pre-built images from GHCR first (seconds), falls back to a local Docker build (several minutes, compiles from source), and falls back further to the native build (`install.sh`) if Docker itself isn't installed. Each path reports missing prerequisites with an install hint instead of a raw tool error.
 
-## Run the containerized bench
+## Installation
 
-The [Docker Compose guide](docs/container-bench.md) starts the process simulator, bay IEDs, station HMI, and IEC 104 supervisory pair as separate containers. It also covers the optional DNP3 pair and the successful-trip and failed-breaker exercises. See [compose.prebuilt.yaml](compose.prebuilt.yaml) to use published images instead of building.
+Three paths, fastest first. `./setup.sh` tries them in this order automatically.
 
-## Build and run
+### 1. Pre-built images (seconds, no compiler needed)
 
-Use a C/C++17 compiler, CMake 3.24 or later, OpenJDK and Node.js 20 or later. On Linux, build with:
+```bash
+docker compose -f compose.yaml -f compose.prebuilt.yaml pull
+docker compose -f compose.yaml -f compose.prebuilt.yaml up -d
+```
+
+Pulls published images from `ghcr.io/pg-ot/virtual_substation_ot` instead of building. Add `-f compose.http-input.yaml` for instructor-controlled current injection, or `--profile dnp3` for the optional DNP3 pair (see [docs/container-bench.md](docs/container-bench.md) for all overlays).
+
+### 2. Local Docker build (a few minutes)
+
+```bash
+docker compose -f compose.yaml up -d --build
+```
+
+Builds everything from source inside Docker. Needs internet access to fetch libiec61850, lib60870 and opendnp3 on the first build.
+
+### 3. Native build (Linux, no Docker)
 
 ```bash
 ./install.sh
 node native/smoke.mjs build-native --dnp3
+```
+
+Checks for cmake (>=3.24), a C++17 compiler, a build tool, Java and Node (>=20) up front and reports exactly what's missing with an install hint, before attempting the several-minute compile. See [Build and run](#build-and-run) below for the console-based exercise this unlocks.
+
+## Service URLs
+
+With the base Docker Compose deployment running (default ports):
+
+| URL | Service |
+|---|---|
+| http://127.0.0.1:8080/ | Station HMI -- single-line, breaker control, events |
+| http://127.0.0.1:8080/lab-overview | Lab overview -- links and reachability for every configured asset |
+| http://127.0.0.1:8081/ | SIMF01 process diagnostics |
+| http://127.0.0.1:8081/yard/ | 3D switchyard and control room |
+| http://127.0.0.1:8082/ | PRF01 protection IED console |
+| http://127.0.0.1:8083/ | BRF01 breaker IED console |
+| http://127.0.0.1:8084/ | IEC 104 gateway |
+| http://127.0.0.1:8085/ | IEC 104 control centre (remote monitoring and supervised control) |
+| http://127.0.0.1:8086/ | DNP3 outstation (needs `--profile dnp3`) |
+| http://127.0.0.1:8087/ | DNP3 master (needs `--profile dnp3`) |
+| http://127.0.0.1:6088/vnc.html | Kali attacker/analysis desktop (needs `-f compose.kali.yaml --profile kali`) |
+
+Override any port with its `LAB_*_PORT` environment variable (e.g. `LAB_HMI_PORT`) to run more than one project at once -- see [docs/container-bench.md](docs/container-bench.md).
+
+## Kali desktop credentials
+
+There is no fixed password. Each time the Kali container starts, it generates a random one and prints it to its own log:
+
+```bash
+docker compose -f compose.yaml -f compose.kali.yaml --profile kali up -d --build --wait kali-access
+docker compose -f compose.yaml -f compose.kali.yaml logs kali
+```
+
+Open http://127.0.0.1:6088/vnc.html and enter the password shown as `SS-01 noVNC desktop password: <token>` in that log. Log rotation can remove the startup message; the only way to get a new one is to restart the container, which needs operator approval since it disrupts anyone already connected.
+
+## Run the containerized bench
+
+The [Docker Compose guide](docs/container-bench.md) covers every overlay (HTTP input, Kali, DNP3, secure access, recovery) and the successful-trip and failed-breaker exercises in detail.
+
+## Build and run
+
+See [Installation](#installation) above to build (`./install.sh`). Once built, run the console-level smoke check and the GOOSE exercise below.
+
+```bash
 node native/console-smoke.mjs build-native
 ```
 
