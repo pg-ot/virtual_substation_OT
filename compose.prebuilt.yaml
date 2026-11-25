@@ -1,0 +1,40 @@
+# Use pre-built images from GitHub Container Registry instead of building
+# locally. Pull first, then start without --build:
+#
+#   docker compose -f compose.yaml -f compose.prebuilt.yaml pull
+#   docker compose -f compose.yaml -f compose.prebuilt.yaml up -d
+#
+# For the optional Kali desktop, also add -f compose.kali.yaml and
+# -f compose.kali.prebuilt.yaml (a separate overlay, so this file never
+# defines kali/kali-access when compose.kali.yaml isn't in use).
+#
+# Images are published by .github/workflows/publish-images.yml whenever
+# native/, src/, web/, containers/ or the Dockerfiles change on main.
+
+x-ghcr-image: &ghcr-image ghcr.io/pg-ot/virtual_substation_ot
+
+services:
+  plant:
+    image: *ghcr-image
+    pull_policy: missing
+  protection:
+    image: *ghcr-image
+    pull_policy: missing
+  breaker:
+    image: *ghcr-image
+    pull_policy: missing
+  station-hmi:
+    image: *ghcr-image
+    pull_policy: missing
+  gateway:
+    image: *ghcr-image
+    pull_policy: missing
+  control-centre:
+    image: *ghcr-image
+    pull_policy: missing
+  gateway-dnp3:
+    image: *ghcr-image
+    pull_policy: missing
+  control-centre-dnp3:
+    image: *ghcr-image
+    pull_policy: missing

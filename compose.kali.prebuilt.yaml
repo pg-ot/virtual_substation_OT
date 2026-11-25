@@ -1,0 +1,17 @@
+# Pre-built Kali image override. Only valid combined with compose.kali.yaml
+# (defines these services) and compose.prebuilt.yaml (the core bench image):
+#
+#   docker compose -f compose.yaml -f compose.kali.yaml \
+#     -f compose.prebuilt.yaml -f compose.kali.prebuilt.yaml \
+#     --profile kali pull
+#   docker compose -f compose.yaml -f compose.kali.yaml \
+#     -f compose.prebuilt.yaml -f compose.kali.prebuilt.yaml \
+#     --profile kali up -d
+
+services:
+  kali:
+    image: ghcr.io/pg-ot/virtual_substation_ot-kali
+    pull_policy: missing
+  kali-access:
+    image: ghcr.io/pg-ot/virtual_substation_ot
+    pull_policy: missing

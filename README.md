@@ -37,9 +37,17 @@ and use its separate overview.
 Never put passwords, credentials or sensitive captures in these documents.
 Document the evidence location and access procedure without publishing secrets.
 
+## Quick start
+
+```bash
+./setup.sh
+```
+
+Tries pre-built images from GHCR first (seconds), falls back to a local Docker build (several minutes, compiles from source), and falls back further to the native build (`install.sh`) if Docker itself isn't installed. Each path reports missing prerequisites with an install hint instead of a raw tool error.
+
 ## Run the containerized bench
 
-The [Docker Compose guide](docs/container-bench.md) starts the process simulator, bay IEDs, station HMI, and IEC 104 supervisory pair as separate containers. It also covers the optional DNP3 pair and the successful-trip and failed-breaker exercises.
+The [Docker Compose guide](docs/container-bench.md) starts the process simulator, bay IEDs, station HMI, and IEC 104 supervisory pair as separate containers. It also covers the optional DNP3 pair and the successful-trip and failed-breaker exercises. See [compose.prebuilt.yaml](compose.prebuilt.yaml) to use published images instead of building.
 
 ## Build and run
 
