@@ -1,14 +1,22 @@
-# System Requirements for Virtual Substation
+# System requirements for the native build (./install.sh checks these at run time)
 # Install with: sudo apt install -y <package>
 
 build-essential
-gcc
-make
-python3
-python3-tk
+cmake
+default-jre-headless
 git
 
-# Optional for development
+# Node.js 20+ is required but not packaged by apt on most distros.
+# Install via nvm instead: https://github.com/nvm-sh/nvm
+
+# Legacy Tkinter reference GUIs (breaker_gui.py, protection_gui.py), kept for comparison only
+python3
+python3-tk
+
+# Optional, for packet capture and debugging
 gdb
 wireshark
 tcpdump
+
+# Docker Compose path (recommended; see docs/container-bench.md) needs only
+# Docker Engine and the Compose plugin -- none of the packages above.
