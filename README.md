@@ -11,11 +11,30 @@ implemented profiles from a dated running-deployment snapshot.
 
 ## Quick start
 
+**Linux**
+
 ```bash
 ./setup.sh
 ```
 
 Tries pre-built images from GHCR first (seconds), falls back to a local Docker build (several minutes, compiles from source), and falls back further to the native build (`install.sh`) if Docker itself isn't installed. Each path reports missing prerequisites with an install hint instead of a raw tool error.
+
+**Windows**
+
+`setup.sh` and `install.sh` are bash scripts and do not run directly in PowerShell or cmd. Docker itself is not Linux-only, so run the same commands setup.sh would have run, directly:
+
+```powershell
+docker compose -f compose.yaml -f compose.prebuilt.yaml pull
+docker compose -f compose.yaml -f compose.prebuilt.yaml up -d
+```
+
+If that fails (images not published yet, or no network access to `ghcr.io`), build locally instead -- Docker Desktop fetches and compiles everything inside the container, so this needs nothing extra installed on Windows itself:
+
+```powershell
+docker compose -f compose.yaml up -d --build
+```
+
+There is no native (non-Docker) path on Windows -- see [Installation](#installation) below. To run `./setup.sh` as written, use WSL2 or Git Bash instead of typing the commands above.
 
 Once it's running, open the [lab overview](http://127.0.0.1:8080/lab-overview) for links and reachability of every configured asset, or jump straight to a [service URL](#service-urls) below.
 
@@ -62,15 +81,26 @@ See [docs/ss01-architecture.md](docs/ss01-architecture.md) for the complete targ
 
 ## Installation
 
-Three paths, fastest first. `./setup.sh` tries them in this order automatically.
+Docker is the only path that works the same on both platforms; the native build is Linux-only. `./setup.sh` tries the first three rows below in order automatically, but only runs as-is on Linux (or Windows under WSL2/Git Bash).
+
+### Linux
 
 | Path | Command | Needs |
 |---|---|---|
 | 1. Pre-built images (seconds) | `docker compose -f compose.yaml -f compose.prebuilt.yaml pull && docker compose -f compose.yaml -f compose.prebuilt.yaml up -d` | Docker only -- pulls from `ghcr.io/pg-ot/virtual_substation_ot` instead of building |
 | 2. Local Docker build (a few minutes) | `docker compose -f compose.yaml up -d --build` | Docker, plus internet access on the first build to fetch libiec61850, lib60870 and opendnp3 |
-| 3. Native build, no Docker (Linux) | `./install.sh && node native/smoke.mjs build-native --dnp3` | cmake >=3.24, a C++17 compiler, a build tool, Java and Node >=20 -- `install.sh` checks these up front and reports what's missing |
+| 3. Native build, no Docker | `./install.sh && node native/smoke.mjs build-native --dnp3` | cmake >=3.24, a C++17 compiler, a build tool, Java and Node >=20 -- `install.sh` checks these up front and reports what's missing. If it reports an old cmake, `pip install --user cmake --upgrade` is the fastest fix. |
 
-Add `-f compose.http-input.yaml` for instructor-controlled current injection, or `--profile dnp3` for the optional DNP3 pair. See [docs/container-bench.md](docs/container-bench.md) for every overlay and the native build's console exercise is in [native/README.md](native/README.md#browser-consoles).
+### Windows
+
+| Path | Command | Needs |
+|---|---|---|
+| 1. Pre-built images (seconds) | `docker compose -f compose.yaml -f compose.prebuilt.yaml pull` then `docker compose -f compose.yaml -f compose.prebuilt.yaml up -d` (PowerShell) | Docker Desktop only |
+| 2. Local Docker build (a few minutes) | `docker compose -f compose.yaml up -d --build` (PowerShell) | Docker Desktop, plus internet access on the first build |
+
+There is no native build on Windows: `install.sh` checks `uname -s` and refuses to run anywhere but Linux, because the native processes need raw-Ethernet access for GOOSE, which this project does not support outside Linux. To get the native (non-Docker) path on a Windows machine, run `install.sh` inside WSL2 following the Linux instructions above, not from PowerShell.
+
+Add `-f compose.http-input.yaml` for instructor-controlled current injection, or `--profile dnp3` for the optional DNP3 pair, on either platform. See [docs/container-bench.md](docs/container-bench.md) for every overlay and the native build's console exercise is in [native/README.md](native/README.md#browser-consoles).
 
 ## Service URLs
 
