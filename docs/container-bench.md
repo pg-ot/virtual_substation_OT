@@ -166,14 +166,14 @@ for the scope and remaining acceptance work.
 
 ## Kali browser desktop
 
-The optional Kali desktop uses GRFICSv3's Kali/Xfce/noVNC image with Wireshark. It joins the supervisory network, where it can reach the IEC 104 and DNP3 gateways, and a separate internal `kali-wan` bridge. A fixed-destination `kali-access` proxy joins that bridge and the management network and publishes the browser desktop through IPv4 loopback. Startup uses a locally generated VNC password. Both Kali networks are marked internal in the current Compose configuration to restrict external routing. Docker networking alone is not a complete security boundary: the host and published services may remain reachable. Use only a dedicated isolated training environment and explicitly authorized simulated targets. This configuration change is source-only until the Kali service and its network are recreated; it does not change an already running network.
+The optional Kali desktop uses GRFICSv3's Kali/Xfce/noVNC image with Wireshark. It joins the supervisory network, where it can reach the IEC 104 and DNP3 gateways, and a separate internal `kali-wan` bridge. A fixed-destination `kali-access` proxy joins that bridge and the management network and publishes the browser desktop through IPv4 loopback. Startup sets a fixed VNC password (`ss01kali`, set in `containers/kali-desktop.sh`); edit that file to a private value before exposing the desktop beyond an isolated training network. Both Kali networks are marked internal in the current Compose configuration to restrict external routing. Docker networking alone is not a complete security boundary: the host and published services may remain reachable. Use only a dedicated isolated training environment and explicitly authorized simulated targets. This configuration change is source-only until the Kali service and its network are recreated; it does not change an already running network.
 
 ```sh
 docker compose -f compose.yaml -f compose.kali.yaml --profile kali up -d --build --wait kali-access
 docker compose -f compose.yaml -f compose.kali.yaml logs kali
 ```
 
-Open [the Kali desktop](http://127.0.0.1:6088/vnc.html) and enter the most recent password printed in the logs. Store it securely when starting Kali: log rotation can remove the startup message, and regenerating the password requires restarting Kali with operator approval. Use `LAB_KALI_WEB_PORT` to override port 6088 if another lab is running. Copy an SS-01 capture into its analysis volume with:
+Open [the Kali desktop](http://127.0.0.1:6088/vnc.html) and enter `ss01kali`. Use `LAB_KALI_WEB_PORT` to override port 6088 if another lab is running. Copy an SS-01 capture into its analysis volume with:
 
 ```sh
 docker compose -f compose.yaml -f compose.kali.yaml cp <capture-file> kali:/captures/

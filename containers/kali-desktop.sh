@@ -5,7 +5,7 @@ set -eu
 mkdir -p /home/kali/Desktop
 chown kali:kali /home/kali/Desktop
 umask 077
-password=$(python3 -c 'import secrets; print(secrets.token_hex(4))')
+password='ss01kali'
 x11vnc -storepasswd "$password" /etc/x11vnc.pass >/dev/null 2>&1
 printf 'SS-01 noVNC desktop password: %s\n' "$password"
 unset password

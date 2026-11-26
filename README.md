@@ -138,14 +138,13 @@ Override any port with its `LAB_*_PORT` environment variable (e.g. `LAB_HMI_PORT
 
 ## Kali desktop credentials
 
-There is no fixed password. Each time the Kali container starts, it generates a random one and prints it to its own log:
+The noVNC desktop password is fixed: `ss01kali`.
 
 ```bash
 docker compose -f compose.yaml -f compose.kali.yaml --profile kali up -d --build --wait kali-access
-docker compose -f compose.yaml -f compose.kali.yaml logs kali
 ```
 
-Open http://127.0.0.1:6088/vnc.html and enter the password shown as `SS-01 noVNC desktop password: <token>` in that log. Log rotation can remove the startup message; the only way to get a new one is to restart the container, which needs operator approval since it disrupts anyone already connected.
+Open http://127.0.0.1:6088/vnc.html and enter `ss01kali`. This password is fixed in `containers/kali-desktop.sh`, which every deployment of this repository mounts into the container read-only at startup -- anyone with a checkout of this repository knows it. Keep the Kali desktop on an isolated training network, and edit that file to a different, private value before exposing it any more widely than host loopback.
 
 ## Run the containerized bench
 
