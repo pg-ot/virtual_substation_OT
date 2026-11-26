@@ -32,9 +32,11 @@ def modify_goose(payload, revision, state, sequence, trip, quality=None):
         tag, value_start, size = tlv_header(payload, offset)
         if tag in (0x85, 0x86, 0x88):
             replacement = {0x85: state, 0x86: sequence, 0x88: revision}[tag]
-            if size != 1 or not 0 <= replacement <= 127:
-                raise ValueError("Fixture requires one-byte nonnegative integers")
-            payload[value_start] = replacement
+            if replacement < 0 or replacement >= 256 ** size:
+                raise ValueError(
+                    f"Replacement for tag 0x{tag:02x} does not fit the captured field's "
+                    f"{size}-byte width (max {256 ** size - 1})")
+            payload[value_start:value_start + size] = replacement.to_bytes(size, "big")
             found.add(tag)
         if tag == 0xab:
             nested_tag, nested_start, nested_size = tlv_header(payload, value_start)
