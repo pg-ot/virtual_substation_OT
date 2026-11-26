@@ -96,7 +96,13 @@ function processInputControls() {
       <output id="process-input-status" role="status" aria-live="polite">No value injected; PRF01 input is invalid until applied.</output>
       <p class="process-input-feedback">Breaker position below is BRF01 contact feedback read over MMS; it is not inferred from the trip command.</p>
     </div>
-  </section>`;
+  </section>
+  <dialog id="sequence-dialog" class="command-dialog" aria-labelledby="sequence-confirmation-title">
+    <div class="scada-panel-title"><h2 id="sequence-confirmation-title">Confirm sequence</h2><span>PRF01</span></div>
+    <p id="sequence-prompt"></p>
+    <div class="dialog-actions"><button type="button" id="cancel-sequence" autofocus>Cancel</button>
+    <button type="button" id="confirm-sequence">Run sequence</button></div>
+  </dialog>`;
 }
 
 function sendJson(response, status, body) {

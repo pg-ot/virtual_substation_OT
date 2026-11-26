@@ -16,6 +16,21 @@ let lastSnapshot = null;
 const controlButtons = [...document.querySelectorAll('[data-action]')];
 const commandResult = byId('command-result');
 const commandDialog = byId('command-dialog');
+const sequenceDialog = byId('sequence-dialog');
+function confirmSequence() {
+  if (!sequenceDialog) return Promise.resolve(true);
+  byId('sequence-prompt').textContent = 'Run the simulated feeder-current sequence? PRF01 pickup is ' + pickupA + ' A.';
+  let confirmed = false;
+  sequenceDialog.showModal();
+  return new Promise(resolve => {
+    sequenceDialog.addEventListener('close', () => resolve(confirmed));
+    byId('cancel-sequence').addEventListener('click', () => sequenceDialog.close());
+    byId('confirm-sequence').addEventListener('click', () => {
+      confirmed = true;
+      sequenceDialog.close();
+    });
+  });
+}
 const actionLabels = { open: 'OPEN', close: 'CLOSE', 'reset-latch': 'RESET LATCH' };
 let pendingAction = null;
 let commandInProgress = false;
@@ -183,7 +198,7 @@ if (processInputPanel) {
     }
   });
   sequenceButton.addEventListener('click', async () => {
-    if (!window.confirm('Run the simulated feeder-current sequence? PRF01 pickup is ' + pickupA + ' A.')) return;
+    if (!await confirmSequence()) return;
     const run = ++sequenceId;
     sequenceActive = true;
     showResetFeedback(latestState?.points);

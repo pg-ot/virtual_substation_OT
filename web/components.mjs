@@ -46,23 +46,45 @@ for (const button of document.querySelectorAll('[data-plant-action]')) {
   });
 }
 
+const remoteUnavailableMessage = 'Controls unavailable: IEC 104 link or fresh position feedback is not GOOD';
+
 function updateRemoteControls(state) {
   const buttons = document.querySelectorAll('[data-remote-action]');
   if (!buttons.length) return;
   for (const button of buttons) {
     button.disabled = !remoteActionEnabled(button.dataset.remoteAction, state, remoteCommandPending);
   }
-  if (!state || state.service !== 'RUNNING' || state.link !== 'TRANSFERRING' ||
-      state.points?.position?.quality !== 'GOOD') {
+  const healthy = state && state.service === 'RUNNING' && state.link === 'TRANSFERRING' &&
+    state.points?.position?.quality === 'GOOD';
+  const status = byId('remote-action-status');
+  if (!healthy) {
     if (remoteCommandPending) return;
-    byId('remote-action-status').textContent = 'Controls unavailable: IEC 104 link or fresh position feedback is not GOOD';
+    status.textContent = remoteUnavailableMessage;
+  } else if (status.textContent === remoteUnavailableMessage) {
+    status.textContent = 'Ready';
   }
+}
+
+function confirmRemote(action) {
+  const dialog = byId('remote-dialog');
+  if (!dialog) return Promise.resolve(true);
+  byId('remote-prompt').textContent = `Send IEC 104 ${action.toUpperCase()} to simulated breaker 52-F01?`;
+  let confirmed = false;
+  dialog.showModal();
+  return new Promise(resolve => {
+    dialog.addEventListener('close', () => resolve(confirmed));
+    byId('cancel-remote').addEventListener('click', () => dialog.close());
+    byId('confirm-remote').addEventListener('click', () => {
+      confirmed = true;
+      dialog.close();
+    });
+  });
 }
 
 for (const button of document.querySelectorAll('[data-remote-action]')) {
   button.addEventListener('click', async () => {
     const action = button.dataset.remoteAction;
-    if (!window.confirm(`Send IEC 104 ${action.toUpperCase()} to simulated breaker 52-F01?`)) return;
+    if (!await confirmRemote(action)) return;
     const buttons = document.querySelectorAll('[data-remote-action]');
     const status = byId('remote-action-status');
     remoteCommandPending = true;

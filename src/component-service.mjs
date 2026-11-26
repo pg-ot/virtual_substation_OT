@@ -427,7 +427,13 @@ const server = createServer(async (request, response) => {
         <button type="button" data-remote-action="open" disabled>Open</button>
         <button type="button" data-remote-action="close" disabled>Close</button>
         <output id="remote-action-status" aria-live="polite"></output>
-      </section>` : '';
+      </section>
+      <dialog id="remote-dialog" class="command-dialog" aria-labelledby="remote-confirmation-title">
+        <div class="scada-panel-title"><h2 id="remote-confirmation-title">Confirm IEC 104 command</h2><span>52-F01</span></div>
+        <p id="remote-prompt"></p>
+        <div class="dialog-actions"><button type="button" id="cancel-remote" autofocus>Cancel</button>
+        <button type="button" id="confirm-remote">Execute</button></div>
+      </dialog>` : '';
       response.writeHead(200, headers).end(body.replace('__COMPONENT_ID__', id)
         .replace('<!-- PLANT_YARD_LINK -->', yardLink).replace('<!-- PLANT_SCENARIO_CONTROLS -->', controls + remoteControls));
       return;

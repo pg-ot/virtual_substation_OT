@@ -35,7 +35,11 @@ async function command(service, text, expected) {
   try {
     await delay(400);
     child.stdin.write(text + '\n');
-    await until(() => acknowledged, `${service} did not acknowledge ${text}`);
+    await until(() => acknowledged, () => {
+      const lastLine = output.trim().split('\n').filter(Boolean).pop();
+      const base = `${service} did not acknowledge ${text}`;
+      return lastLine ? `${base} (last response: ${lastLine})` : base;
+    });
     console.log(`${new Date().toISOString()} ${service}: ${expected}`);
   } finally {
     child.kill();
@@ -51,7 +55,17 @@ async function until(probe, description) {
     } catch {}
     await delay(200);
   }
-  throw new Error(description);
+  throw new Error(typeof description === 'function' ? description() : description);
+}
+
+async function httpProcessInputEnabled() {
+  try {
+    const value = await compose('exec', '-T', 'protection', 'sh', '-c',
+      'printf "%s" "$LAB_HTTP_PROCESS_INPUT"');
+    return value === '1';
+  } catch {
+    return false;
+  }
 }
 
 async function endpoint(service, port) {
@@ -68,6 +82,13 @@ if (gatewayActions.has(action)) {
   await command('plant', action, 'Plant applied ' + action);
 } else {
   await compose('start', 'gateway');
+  if (await httpProcessInputEnabled()) {
+    throw new Error('This deployment uses direct-HTTP process input (compose.http-input.yaml). ' +
+      'PRF01 only trusts current applied from an open station page, which this automated reset ' +
+      'cannot establish or keep renewed. Open the station page, click "Apply slider value" with ' +
+      'a value below pickup, keep that tab open, then use "Reset PRF01 trip" and ' +
+      '"Reset BRF01 close latch" there instead of this button.');
+  }
   const plant = await endpoint('plant', 8090);
   const hmi = await endpoint('station-hmi', 8080);
   await command('plant', 'clear', 'Plant applied clear');

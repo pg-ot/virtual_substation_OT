@@ -53,7 +53,8 @@ async function loadStation(t, initialPoints = baseline, previousCommand = null) 
   for (const id of ['process-input-panel', 'process-current', 'process-current-value', 'process-input-status',
     'apply-process-current', 'run-process-sequence', 'stop-process-sequence',
     'reset-protection-trip', 'protection-reset-status', 'faceplate-input-status',
-    'command-dialog', 'command-prompt', 'cancel-command', 'confirm-command', 'command-result', 'close-guidance']) {
+    'command-dialog', 'command-prompt', 'cancel-command', 'confirm-command', 'command-result', 'close-guidance',
+    'sequence-dialog', 'sequence-prompt', 'cancel-sequence', 'confirm-sequence']) {
     elements.set(id, new Element());
   }
   const element = id => elements.get(id);
@@ -61,9 +62,11 @@ async function loadStation(t, initialPoints = baseline, previousCommand = null) 
   element('process-input-panel').dataset.processInputUrl = endpoint;
   element('process-input-panel').dataset.pickupA = '200';
   element('process-current').value = '120';
-  const dialog = element('command-dialog');
-  dialog.showModal = () => { dialog.open = true; };
-  dialog.close = () => { dialog.open = false; dialog.dispatch('close'); };
+  for (const dialogId of ['command-dialog', 'sequence-dialog']) {
+    const dialog = element(dialogId);
+    dialog.showModal = () => { dialog.open = true; };
+    dialog.close = () => { dialog.open = false; dialog.dispatch('close'); };
+  }
 
   let time = 10000;
   let points = initialPoints;
@@ -217,6 +220,7 @@ test('PRF01 reset enables the separate breaker latch reset only after clear feed
 test('uninterrupted sequence applies normal, fault, and restored current in order', async t => {
   const ui = await loadStation(t);
   const sequence = ui.click('run-process-sequence');
+  ui.click('confirm-sequence');
   await ui.finishInput();
   await ui.elapse(2000);
   await ui.finishInput();
@@ -226,6 +230,15 @@ test('uninterrupted sequence applies normal, fault, and restored current in orde
   assert.deepEqual(ui.sent, [120, 250, 120]);
   assert.equal(ui.element('stop-process-sequence').disabled, true);
   assert.equal(ui.element('apply-process-current').disabled, false);
+});
+
+test('cancelling the sequence confirmation sends no current', async t => {
+  const ui = await loadStation(t);
+  const sequence = ui.click('run-process-sequence');
+  ui.click('cancel-sequence');
+  await sequence;
+  assert.deepEqual(ui.sent, []);
+  assert.equal(ui.element('sequence-dialog').open, false);
 });
 
 test('stale trip does not look ASSERTED or activate the station point alarm', async t => {
@@ -254,6 +267,7 @@ test('lease renewal preserves an edited slider value until Apply', async t => {
 test('Stop during an in-flight overcurrent update returns PRF01 to 120 A', async t => {
   const ui = await loadStation(t);
   const sequence = ui.click('run-process-sequence');
+  ui.click('confirm-sequence');
   await ui.finishInput();
   await ui.elapse(2000);
   assert.deepEqual(ui.sent, [120, 250]);

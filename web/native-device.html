@@ -13,6 +13,8 @@ table{width:100%;border-collapse:collapse;font:13px Consolas,monospace}td,th{pad
 th{width:38%}tbody tr:nth-child(even){background:#dae1e4}.alarm{background:#f0d5a0;font-weight:bold}
 .actions{display:flex;flex-wrap:wrap;gap:7px;padding:8px}button{padding:5px 10px;background:#f0f2f3;border:1px solid #788892;color:#202a31}
 button:focus-visible{outline:2px solid #245c86}p{margin:7px 9px}.events{overflow:auto;max-height:230px}
+dialog{border:1px solid #788892;padding:0;background:#e4e8ea;min-width:280px}dialog::backdrop{background:rgba(0,0,0,.5)}
+dialog h2{margin:0}dialog p{margin:9px}.dialog-actions{display:flex;justify-content:flex-end;gap:7px;padding:0 9px 9px}
 </style>
 </head>
 <body>
@@ -27,6 +29,9 @@ button:focus-visible{outline:2px solid #245c86}p{margin:7px 9px}.events{overflow
 <section><h2>Device events</h2><div class="events"><table aria-label="Device events"><tbody id="events"></tbody></table></div></section>
 <p id="status" role="status"></p>
 </main>
+<dialog id="instructor-dialog"><h2>Confirm instructor action</h2><p id="instructor-prompt"></p>
+<div class="dialog-actions"><button type="button" id="cancel-instructor" autofocus>Cancel</button>
+<button type="button" id="confirm-instructor">Submit</button></div></dialog>
 <script>
 const role = '__ROLE__';
 const protection = role === 'protection';
@@ -76,9 +81,20 @@ async function refresh() {
     setTimeout(refresh, 500);
   }
 }
+function confirmInstructorAction(label) {
+  const dialog = byId('instructor-dialog');
+  byId('instructor-prompt').textContent = 'Submit instructor action: ' + label + '?';
+  let confirmed = false;
+  dialog.showModal();
+  return new Promise(resolve => {
+    dialog.addEventListener('close', () => resolve(confirmed));
+    byId('cancel-instructor').addEventListener('click', () => dialog.close());
+    byId('confirm-instructor').addEventListener('click', () => { confirmed = true; dialog.close(); });
+  });
+}
 for (const button of document.querySelectorAll('[data-action]')) {
   button.onclick = async () => {
-    if (!confirm('Submit instructor action: ' + button.textContent + '?')) return;
+    if (!await confirmInstructorAction(button.textContent)) return;
     try {
       const response = await fetch('/instructor/' + button.dataset.action, {method:'POST'});
       byId('feedback').textContent = response.ok

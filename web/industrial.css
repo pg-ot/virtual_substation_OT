@@ -86,6 +86,8 @@
 .scada .stale { background: #473b25; color: #f6d89a; }
 .scada .command-dialog { width: min(400px, 92vw); background: var(--panel); border: 1px solid #748994; color: var(--text); }
 .scada .command-dialog::backdrop { background: #10171cba; }
+#remote-dialog { width: min(400px, 92vw); background: var(--panel); border: 1px solid #748994; color: var(--text); }
+#remote-dialog::backdrop { background: #10171cba; }
 .dialog-actions { display: flex; justify-content: flex-end; padding: 4px 12px 14px; gap: 7px; }
 .process-input { margin: 10px 0; }
 .process-input-body { display: grid; gap: 9px; padding: 11px; }
