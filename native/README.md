@@ -86,6 +86,50 @@ both processes share the same monotonic clock, as containers on one Linux
 kernel do. These logs perturb execution, omit measurement uncertainty, and
 do not establish a real-time guarantee or standards conformance.
 
+## Browser consoles
+
+Once built (see [Build](#build) above), run the console-level smoke check and the GOOSE exercise below from the repository root.
+
+```bash
+node native/console-smoke.mjs build-native
+```
+
+For the GOOSE exercise, use an isolated station Ethernet interface on Linux. The native processes need raw Ethernet permission on their selected interface. Launch each console in its own terminal as an unprivileged user with the required capability granted to the native binary by the lab administrator.
+
+```bash
+./start_protection.sh <publisher-station-interface>
+./start_breaker.sh <subscriber-station-interface>
+```
+
+| Console | Address | Data path |
+|---|---|---|
+| Protection IED | http://127.0.0.1:8211/ | An MMS client reads the live feeder IED. Instructor actions go to the IED process. |
+| Breaker IED | http://127.0.0.1:8212/ | BRF01 exposes received GOOSE and separately publishes its own breaker position over MMS. |
+| Station HMI | http://127.0.0.1:8080/ | An independent native MMS client reads BRF01 position and PRF01 trip and current. |
+
+Use `./start_protection.sh -` for the MMS-only console. On Windows use `node src/native-device-console.mjs protection - <build-directory>`. Stop each launcher with Ctrl+C. The console and its child process can be stopped separately from the other device.
+
+Set `LAB_CONSOLE_PORT` for an alternate console binding. The native protocol ports can also be overridden for local tests.
+
+### Read-only station HMI
+
+Start both IEDs using the [distributed breaker exercise](#distributed-breaker-exercise) above, then run:
+
+```text
+node src/serve.mjs --native build-native
+node native/station-hmi-smoke.mjs build-native
+```
+
+Run the smoke test separately from the live exercise, or give it separate MMS ports. Set `PORT` for an alternate HMI HTTP port. Match `LAB_MMS_PORT` and `LAB_BREAKER_MMS_PORT` to the running IEDs. The station displays source timestamps and per-point quality. Its event table records changes observed by the station poller.
+
+### Exercise
+
+1. Open both consoles. Verify confirmed CLOSED over MMS and LIVE GOOSE indications at the peer.
+2. Apply a fault in the protection console. Observe the OPEN confirmation over MMS and the state change at the GOOSE peer. Heartbeat retransmissions update the sequence number and last receipt without creating a new state event.
+3. Stop the publisher. The peer retains the last received values and marks them STALE when their lifetime expires.
+
+The breaker console shows the received GOOSE trip alongside BRF01's confirmed position. Isolated Linux GOOSE and MMS feedback exercises have been observed; full timing, independent interoperability and conformance remain open. See the [as-built reference](../docs/as-built.md) and [ADR 0016](../docs/adr/0016-full-feeder-bay.md).
+
 ## Release boundary
 
 IEC 104 and DNP3 paths cover monitoring and have browser views. The training IEC 104 path also supports simulated select/execute switching; DNP3 switching, independent supervisory control acceptance and full client state persistence remain open. See [ADR 0029](../docs/adr/0029-remote-switching-boundary.md). The development CID supplies the working model. Complete device profiles, independent validation of the SCL and independent-peer conformance testing are separate release tasks. Same-library smoke checks verify that these programs exchange native traffic and that the feeder scenario reaches their clients.
