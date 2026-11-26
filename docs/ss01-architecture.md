@@ -63,9 +63,19 @@ flowchart TB
   PLANT --> CT2
   PLANT <--> CB
   PLANT --> YARD
+
+  CAP["Illustrative capture switch<br/>mirror / SPAN port — this is where packets are captured"]
+  CAP -.->|"Mirrored station traffic<br/>MMS and GOOSE"| SB
+  CAP -.->|"Mirrored process traffic<br/>SV and process I/O"| PB
+  CAP -.->|"Mirrored supervisory traffic<br/>IEC 104 and DNP3"| WAN
+
+  classDef capture fill:#1f2a33,stroke:#ffb86b,stroke-width:2px,stroke-dasharray:5 5,color:#fff;
+  class CAP capture;
 ```
 
 The two CT/VT and merging-unit paths are alternatives. Commission one measurement source per F01 protection configuration. The combined IED is a separate profile. F01 in distributed mode uses independent PRF01 and BRF01 devices and one authoritative breaker. The station and process buses are shown as separate logical networks. Redundancy would require an explicit design and acceptance run.
+
+The capture switch is illustrative: in a physical substation it is the mirror or SPAN port on the station, process and WAN-side LAN switches that a protection engineer or analyst would patch into. In SS-01 there is no physical switch — each of those buses is a Docker bridge network, and `containers/capture-agent.mjs` reaches the same vantage point by attaching a sandboxed capture container directly to each service's network namespace (`docker run --network container:<target>` running `tcpdump`) instead of a SPAN port. Point to this box when narrating "this is where we'd tap the wire" during a training session.
 
 ## Reference diagram crosswalk
 
