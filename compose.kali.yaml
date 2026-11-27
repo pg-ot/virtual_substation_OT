@@ -9,7 +9,6 @@ services:
     init: true
     entrypoint: ["/bin/sh", "/opt/ss01/kali-desktop.sh"]
     command: []
-    security_opt: [no-new-privileges:true]
     logging: &bounded-logging
       driver: json-file
       options:
@@ -19,6 +18,7 @@ services:
     volumes:
       - ./containers/kali-desktop.sh:/opt/ss01/kali-desktop.sh:ro
       - ./containers/kali-supervisord.conf:/opt/ss01/kali-supervisord.conf:ro
+      - ./containers/goose-inject.py:/opt/ss01/goose-inject.py:ro
       - ./training/kali:/opt/ss01/practicals:ro
       - ./training/kali/desktop:/home/kali/Desktop/SS-01 Practicals:ro
       - ./outputs/SS-01-practical-workbook.html:/opt/ss01/workbook.html:ro

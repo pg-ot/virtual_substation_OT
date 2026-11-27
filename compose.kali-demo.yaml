@@ -1,0 +1,13 @@
+# TEMPORARY demonstration-only overlay: joins Kali to the station and
+# process networks so a live GOOSE injection and MMS rogue write can be
+# shown from the Kali desktop, in addition to the IEC 104 rogue-master
+# attack that compose.kali.yaml's default supervisory-only placement
+# already reaches.
+#
+# This removes the isolation documented in docs/ss01-architecture.md's
+# deployment table (Kali is supervisory-only by default). Use only for an
+# instructor-led live demo on an isolated training host, and drop this
+# file from the compose command afterward to restore the default boundary.
+services:
+  kali:
+    networks: [kali-wan, supervisory, station, process]

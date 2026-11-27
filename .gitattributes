@@ -3,5 +3,6 @@
 /containers/secure-access/*.sh text eol=lf
 /containers/secure-access/sshd_config text eol=lf
 /training/kali/*.sh text eol=lf
+/training/kali/attacks/*.sh text eol=lf
 /training/kali/desktop/**/*.desktop text eol=lf
 /training/kali/desktop/*.desktop text eol=lf
