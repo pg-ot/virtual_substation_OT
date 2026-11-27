@@ -28,19 +28,11 @@ After the GOOSE attack specifically, the first `restore-baseline.sh` call
 sometimes comes back `REJECTED` while BRF01 settles from the forged frame;
 run it again and it accepts normally.
 
-## One-time setup per lab start
+## Setup
 
-`station-client` and `telecontrol104` are native binaries built into every
-`ss01-bench:dev` service image, not into the Kali image. Copy them in before
-the first attack:
-
-```bash
-docker cp ss01-bench-breaker-1:/usr/local/bin/station-client - | docker cp - ss01-bench-kali-1:/usr/local/bin/station-client
-docker cp ss01-bench-gateway-1:/usr/local/bin/telecontrol104 - | docker cp - ss01-bench-kali-1:/usr/local/bin/telecontrol104
-docker exec ss01-bench-kali-1 chmod +x /usr/local/bin/station-client /usr/local/bin/telecontrol104
-```
-
-(Replace the container names with whatever your Compose project prefixes
-them as, e.g. `docker compose ps` to check.) `containers/goose-inject.py`
-and this directory's scripts are copied into `/usr/local/bin` automatically
-by `kali-desktop.sh` on every container start -- nothing to do for those.
+Nothing to do: `station-client` and `telecontrol104` are built from the
+same native sources as the bench image (see `containers/kali.Dockerfile`)
+and baked into the Kali image itself. `containers/goose-inject.py` and this
+directory's scripts are copied into `/usr/local/bin` automatically by
+`kali-desktop.sh` on every container start. Just open a terminal in the
+noVNC desktop and run the scripts by name.

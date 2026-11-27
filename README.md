@@ -134,6 +134,8 @@ docker compose -f compose.yaml -f compose.kali.yaml --profile kali up -d --build
 
 Open http://127.0.0.1:6088/vnc.html and enter `ss01kali`. This password is fixed in `containers/kali-desktop.sh`, which every deployment of this repository mounts into the container read-only at startup -- anyone with a checkout of this repository knows it. Keep the Kali desktop on an isolated training network, and edit that file to a different, private value before exposing it any more widely than host loopback.
 
+The Kali image's first build also compiles `station-client` and `telecontrol104` from the native sources (same dependency fetch as the native build in [Installation](#installation)), so `--build` here takes a few minutes the first time. These are what the instructor-run live attack demo scripts in [training/kali/attacks](training/kali/attacks/README.md) use to open the breaker over MMS and IEC 104 from the desktop; a forged-GOOSE script is in the same directory. For live attack demos, also add `-f compose.kali-demo.yaml` to reach the station and process networks (GOOSE/MMS), not just supervisory (IEC 104/DNP3) -- see that file for the isolation tradeoff this makes.
+
 ## Documentation
 
 | If you're... | Start with |
